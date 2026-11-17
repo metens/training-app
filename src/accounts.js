@@ -38,8 +38,10 @@ async function portal(user, action) {
   const response = await fetch(`/api/portal?action=${action}`, {
     headers: {Authorization: `Bearer ${await user.getIdToken()}`}, cache: 'no-store'
   });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || 'Could not load your account.');
+  const result = await response.json().catch(() => null);
+  if (!result || !response.ok) {
+    throw new Error(result?.error || 'Your account could not be refreshed. We’ll retry automatically. If this continues, contact your coach.');
+  }
   return result;
 }
 function showSignIn() {
