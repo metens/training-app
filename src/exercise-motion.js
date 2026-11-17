@@ -83,10 +83,10 @@
   for (const [alias, name] of Object.entries(aliases)) byName.set(alias, byName.get(normalize(name)));
 
   const characters = [
-    { skin:'#a55d4a', hair:'#292221', top:'#26654f', pants:'#264154', pony:true },
-    { skin:'#df9e77', hair:'#543628', top:'#487767', pants:'#313a58', pony:false },
-    { skin:'#83503d', hair:'#27232c', top:'#9a5949', pants:'#263b51', pony:false },
-    { skin:'#c68661', hair:'#332129', top:'#87604a', pants:'#2c4847', pony:true }
+    { skin:'#a55d4a', hair:'#292221', top:'#2d6954', pants:'#294a42', pony:true },
+    { skin:'#df9e77', hair:'#543628', top:'#4d7863', pants:'#314f49', pony:false },
+    { skin:'#83503d', hair:'#27232c', top:'#955e4f', pants:'#294943', pony:false },
+    { skin:'#c68661', hair:'#332129', top:'#8b6050', pants:'#2c4847', pony:true }
   ];
   const picks = new Map();
   const cache = new Map();
@@ -140,20 +140,19 @@
       ankle: () => circle('ankle',9,'#54675f',0,-8)
     };
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 392 300" stroke-linecap="round" stroke-linejoin="round">'+
-      '<rect width="392" height="300" rx="18" fill="#edf3e9"/>'+
-      '<circle cx="196" cy="143" r="112" fill="#e4ede0"/>'+
-      '<path d="M43 239h306" stroke="#cbd9ce" stroke-width="3"/>'+
+      '<rect width="392" height="300" fill="#eef4e9"/>'+
+      '<path d="M28 277h336" stroke="#cbd9ce" stroke-width="4"/><g transform="translate(-25.48 6.93) scale(1.13)">'+
       '<g fill="none" stroke="'+palette.tools+'" stroke-width="6">'+(equipment||'')+'</g>'+
       poly(['hip','farKnee','farAnkle'],'#566d70',15)+shoe('farAnkle')+
       poly(['shoulder','farElbow','farHand'],character.skin,11)+
       poly(['hip','knee','ankle'],character.pants,17)+shoe('ankle')+
-      poly(['shoulder','hip'],character.top,31)+
+      poly(['shoulder','hip'],character.top,35)+
       poly(['head','shoulder'],character.skin,14)+
       (character.pony ? circle('head',9,character.hair,-12,-6) : '')+
       circle('head',15,character.skin)+circle('head',11,character.hair,-4,-6)+
       circle('head',2,'#33292a',9,1)+
       poly(['shoulder','elbow','hand'],character.skin,11)+
-      (accessories[prop]?.() || '')+'</svg>';
+      (accessories[prop]?.() || '')+'</g></svg>';
   }
 
   function asset(name, animate = false) {
