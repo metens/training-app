@@ -70,7 +70,7 @@ function showPlan(plan) {
     const section = card(day.name || 'Workout day', '');
     for (const exercise of day.exercises || []) {
       const exerciseCard = card(exercise.name, [
-        `${exercise.sets} sets`, `${exercise.reps} reps`, exercise.load,
+        `${exercise.sets} sets`, exercise.reps ? `${exercise.reps} reps` : '', exercise.load,
         exercise.rest ? `${exercise.rest} sec rest` : '', exercise.notes
       ].filter(Boolean).join(' · '));
       const preview = document.createElement('div');
