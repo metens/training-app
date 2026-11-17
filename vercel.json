@@ -1,4 +1,7 @@
 {
   "framework": null,
-  "outputDirectory": "src"
+  "outputDirectory": "src",
+  "rewrites": [
+    {"source": "/api/portal", "destination": "https://pacificperformance.fit/api/portal"}
+  ]
 }

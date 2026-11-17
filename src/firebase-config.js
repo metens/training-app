@@ -1,6 +1,7 @@
+// Use the same accounts and client records as pacificperformance.fit.
 export default {
-  projectId: 'pp-training-preview-65101eba',
-  appId: '1:687951266846:web:b3a4cca0fddfd0664f1a0f',
-  apiKey: 'AIzaSyBEyIiRfwkJqBy4-vN_TeySfYp9Mfj7GLM',
-  authDomain: 'pp-training-preview-65101eba.firebaseapp.com'
+  apiKey: "AIzaSyB9-eNrLcIiEmEIdnbL-cDu6DMdrovaiI8",
+  authDomain: "pacific-performance.firebaseapp.com",
+  projectId: "pacific-performance",
+  appId: "1:805792988518:web:e68d24c707273edb7a5ca7"
 };
