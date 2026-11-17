@@ -1,3 +1,5 @@
+import "./exercise-motion.js";
+
 function conditioningLoad(exercise) {
   const {name, unit, amount, reps} = exercise;
   if (name === 'Jump Rope') {
@@ -8,6 +10,9 @@ function conditioningLoad(exercise) {
   if (name === 'Running Intervals') {
     const units = {miles: 'mi', meters: 'm', seconds: 'sec'};
     return Object.hasOwn(units, unit) && amount > 0 ? `${amount} ${units[unit]}` : '';
+  }
+  if (globalThis.PPExerciseMotion.find(name)?.measurement === 'time') {
+    return unit === 'seconds' && amount > 0 ? `${amount} sec` : (exercise.load ?? '');
   }
   return null;
 }
