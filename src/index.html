@@ -26,7 +26,12 @@
 #workoutElapsed{font-variant-numeric:tabular-nums}
 #workoutProgress{display:block;width:100%;height:12px;margin-top:7px;accent-color:#39674b}
 .set-row{justify-content:flex-start;margin:6px 0;flex-wrap:wrap}
-.set-row label:first-child{margin-right:auto}
+.set-row label:first-child{margin-right:auto;display:flex;align-items:center;gap:6px;min-height:44px}
+.set-row{border-radius:10px;padding:2px 6px}
+.set-row .setCheck{width:23px;height:23px;margin:0;accent-color:#39674b}
+.set-row:has(.setCheck:checked),.coach-completed{background:#e4f1df;border-color:#c4ddba}
+.history-session.coach-completed{padding-inline:10px;border-radius:10px}
+#clientAssignments:empty{display:none}
 .history-session{display:grid;gap:5px}
 .set-row .session-reps{width:50px}
 .cardio-fields{display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin-top:9px}
@@ -69,7 +74,7 @@
 .header-copy p{color:#d5e4ce;font-size:13px;line-height:1.35;margin:0}
 .header-logo{align-self:center;justify-self:center;display:block;width:min(100%,96px);height:auto;aspect-ratio:1;object-fit:contain;filter:brightness(0) invert(1)}
 .app header,.app main section:not(#progress),#progress > :not(:has(.month-scroll)),.month-navigation{touch-action:pan-y pinch-zoom}
-.cloud-account form{display:grid;gap:8px}.cloud-account form label{display:grid;gap:4px}.cloud-account input,.cloud-account select{width:100%}.cloud-account input[type=checkbox]{width:auto}.cloud-account button{margin:4px 4px 4px 0}</style><div class="app"><header class="app-header"><div class="header-copy"><h1 id="title">Train with purpose.</h1><p>Strength · Running · Performance</p></div><img class="header-logo" src="/pacific-logo.png" alt="Pacific Performance Training" width="104" height="104"></header><main><section id="home" class="on"><h2 id="clientGreeting" hidden></h2><div class="card"><h3>Training overview</h3><div class="row"><div><strong id="total">0</strong><p class="muted">Sessions</p></div><div><strong id="routineCount">0</strong><p class="muted">Custom workouts</p></div><div><strong id="weeklyStreak">0 weeks</strong><p class="muted">Weekly streak</p></div></div><h4>Personal records</h4><div id="overviewPRs"></div></div><h2>Workout activity</h2><div id="workoutFeed"></div></section><section id="workouts"><div class="row"><h2>Workouts</h2><span class="pill">Training hub</span></div><div class="card"><h3>Workout Builder</h3><p class="muted">Build a routine with sets, reps and weights.</p><button class="full" onclick="builder()">+ Create workout</button></div><div id="routines"></div><div id="clientAssignments"></div><div id="assigned"></div></section><section id="progress"><h2>Progress</h2><div class="card"><h3>Training consistency</h3><strong id="progressTotal" style="font-size:36px">0</strong><p class="muted">Completed workouts</p><div class="bar"><div id="progressBar" style="width:0%"></div></div><p class="muted">Goal: 3 workouts</p><div id="trainingMonth"></div></div><div class="card"><h3>Strength log</h3><p class="muted">Log a lift here or finish a workout to update your best.</p>
+.cloud-account form{display:grid;gap:8px}.cloud-account form label{display:grid;gap:4px}.cloud-account input,.cloud-account select{width:100%}.cloud-account input[type=checkbox]{width:auto}.cloud-account button{margin:4px 4px 4px 0}</style><div class="app"><header class="app-header"><div class="header-copy"><h1 id="title">Train with purpose.</h1><p>Strength · Running · Performance</p></div><img class="header-logo" src="/pacific-logo.png" alt="Pacific Performance Training" width="104" height="104"></header><main><section id="home" class="on"><h2 id="clientGreeting" hidden></h2><div class="card"><h3>Training overview</h3><div class="row"><div><strong id="total">0</strong><p class="muted">Sessions</p></div><div><strong id="routineCount">0</strong><p class="muted">Custom workouts</p></div><div><strong id="weeklyStreak">0 weeks</strong><p class="muted">Weekly streak</p></div></div><h4>Personal records</h4><div id="overviewPRs"></div></div><h2>Workout activity</h2><div id="workoutFeed"></div></section><section id="workouts"><div class="row"><h2>Workouts</h2><span class="pill">Training hub</span></div><div id="clientAssignments"></div><p id="workoutSyncStatus" class="muted" role="status" hidden></p><div class="card"><h3>Workout Builder</h3><p class="muted">Build a routine with sets, reps and weights.</p><button class="full" onclick="builder()">+ Create workout</button></div><div id="routines"></div><div id="assigned"></div></section><section id="progress"><h2>Progress</h2><div class="card"><h3>Training consistency</h3><strong id="progressTotal" style="font-size:36px">0</strong><p class="muted">Completed workouts</p><div class="bar"><div id="progressBar" style="width:0%"></div></div><p class="muted">Goal: 3 workouts</p><div id="trainingMonth"></div></div><div class="card"><h3>Strength log</h3><p class="muted">Log a lift here or finish a workout to update your best.</p>
 <form id="manualLift" onsubmit="saveLift(event)">
   <span id="liftLabel">Lift</span>
   <button type="button" class="light full lift-picker" id="liftPicker" aria-labelledby="liftLabel liftSelection" aria-haspopup="dialog" onclick="openLiftPicker()"><span id="liftSelection">Choose a lift</span><span aria-hidden="true">⌄</span></button>
@@ -298,7 +303,7 @@ function renderSessionHistory() {
     ? history.map(session => {
         const prs = sessionPRs(session);
         const summary = sessionMetrics(session);
-        return '<div class="exercise history-session"><b>' +
+        return '<div class="exercise history-session' + (session.planId && session.allSets ? ' coach-completed' : '') + '"><b>' +
           (prs.length ? '<span aria-label="Personal record">🏆</span> ' : '') + safe(session.name) +
           '</b><span class="history-summary"><span>' + safe(session.date) + '</span>' + summary + '</span>' +
           (prs.length ? '<span class="history-prs">' + prs.map(set =>
@@ -432,7 +437,7 @@ function renderWorkoutFeed() {
     ? history.map((session, index) => {
         const prs = sessionPRs(session);
         const summary = '<p class="muted session-stats">' + sessionMetrics(session) + '</p>';
-        return '<article class="card workout-highlight"><div class="row"><h3>' + safe(session.name) +
+        return '<article class="card workout-highlight' + (session.planId && session.allSets ? ' coach-completed' : '') + '"><div class="row"><h3>' + safe(session.name) +
           '</h3><button type="button" class="light workout-options" aria-label="Options for ' + safe(session.name) +
           '" onclick="workoutOptions(' + index + ')">⋯</button></div><p class="muted">' +
           safe(session.date) + '</p>' + summary + muscleMap(session) + prs.map(set =>
@@ -453,8 +458,8 @@ function workoutOptions(index) {
 
 function deleteSession(index) {
   if (!confirm('Delete this completed workout from Home and Session History?')) return;
-  history.splice(index, 1);
-  saveSessionChanges();
+  const [removed] = history.splice(index, 1);
+  saveSessionChanges(removed, true);
 }
 
 function editSession(index) {
@@ -500,10 +505,10 @@ function saveSessionEdit(event, index) {
     });
     session.volume = strengthVolume(session.sets);
   }
-  saveSessionChanges();
+  saveSessionChanges(session);
 }
 
-function saveSessionChanges() {
+function saveSessionChanges(changed, deleting = false) {
   const weights = new Map();
   const repWeights = new Map();
   for (const lift of lifts) {
@@ -536,7 +541,7 @@ function saveSessionChanges() {
     }
     session.records = Array.from(records, ([name, weight]) => ({name, weight}));
   }
-  put('history', history);
+  persistHistory(changed, deleting);
   closeDialog();
   render();
 }
@@ -660,13 +665,85 @@ function renderStrengthRecords() {
     : '<p class="muted">No strength records yet.</p>';
 }
 
-function complete(name, records, sets, duration) {
+let historyAccount = null;
+
+function historyKey() {
+  return historyAccount ? 'history_' + historyAccount : 'history';
+}
+
+function selectWorkoutAccount(uid) {
+  if (uid === historyAccount) return;
+  historyAccount = uid;
+  history = get(historyKey(), []).filter(item => item.name !== 'Full Body Foundations');
+  closeDialog();
+  render();
+}
+
+function persistHistory(session, deleting) {
+  put(historyKey(), history);
+  if (historyAccount && session?.id) window.queueWorkoutSync?.(historyAccount, session, deleting);
+}
+
+function mergeWorkoutHistory(workouts, pendingIds) {
+  const entries = new Map(history.map(session => [session.id || session.loggedAt, session]));
+  for (const workout of workouts) {
+    if (pendingIds.has(workout.id)) continue;
+    const records = new Map();
+    for (const set of workout.sets) {
+      if (set.pr && set.weight > (records.get(set.name) || 0)) records.set(set.name, set.weight);
+    }
+    entries.set(workout.id, {...workout, date: new Date(workout.loggedAt).toLocaleDateString(),
+      records: Array.from(records, ([name, weight]) => ({name, weight}))});
+  }
+  history = [...entries.values()].sort((a, b) => a.loggedAt - b.loggedAt);
+  put(historyKey(), history);
+  render();
+}
+
+function completedCoachDays(planId) {
+  return [...new Set(history.filter(item => item.planId === planId && item.allSets).map(item => item.planDay))];
+}
+
+function coachExercise(exercise) {
+  const name = String(exercise.name || 'Exercise').trim();
+  const sets = Math.min(20, Math.max(1, Number.parseInt(exercise.sets, 10) || 1));
+  const load = String(exercise.load ?? '').trim();
+  const repsText = String(exercise.reps ?? '').trim();
+  const prescription = [
+    repsText && 'Assigned reps: ' + repsText, load && 'Assigned load or target: ' + load,
+    exercise.rest && exercise.rest + ' sec rest', exercise.notes
+  ].filter(Boolean).join(' · ');
+  for (const text of [load, repsText]) {
+    const target = text.match(/^(\d+(?:\.\d+)?)\s*(sec(?:ond)?s?|s|min(?:ute)?s?|mi(?:le)?s?|m|meters?|jumps?)$/i);
+    if (!target) continue;
+    const suffix = target[2].toLowerCase();
+    const unit = suffix.startsWith('jump') ? 'jumps' :
+      /^mi(?:le)?s?$/.test(suffix) ? 'miles' : /^(?:m|meters?)$/.test(suffix) ? 'meters' : 'seconds';
+    return {name, sets, prescription, unit, amount: Number(target[1]) * (suffix.startsWith('min') ? 60 : 1)};
+  }
+  const weightMatch = load.match(/^(\d+(?:\.\d+)?)\s*(lbs?|kg)?$/i);
+  const weight = weightMatch ? Math.round(Number(weightMatch[1]) * (/kg/i.test(weightMatch[2] || '') ? 220.462262 : 100)) / 100 :
+    !load || /^(?:body\s*weight|bw)$/i.test(load) ? 0 : null;
+  const reps = Number.parseInt(repsText, 10) || null;
+  return {name, sets, reps, weight, prescription};
+}
+
+function startCoachDay(plan, dayIndex) {
+  const day = plan.days[dayIndex];
+  if (!day?.exercises?.length) return;
+  startWorkout({name: plan.days.length === 1 ? plan.name : plan.name + ' · ' + (day.name || 'Day ' + (dayIndex + 1)),
+    planId: plan.id, planDay: dayIndex, exercises: day.exercises.map(coachExercise)});
+}
+
+function complete(name, records, sets, duration, assignment = {}) {
   const date = new Date();
   const dayKey = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'),
     String(date.getDate()).padStart(2, '0')].join('-');
   const volume = strengthVolume(sets);
-  history.push({name, date: date.toLocaleDateString(), dayKey, records, sets, duration, volume, loggedAt: date.getTime()});
-  put('history', history);
+  const session = {id: crypto.randomUUID(), name, date: date.toLocaleDateString(), dayKey, records,
+    sets, duration, volume, loggedAt: date.getTime(), ...assignment};
+  history.push(session);
+  persistHistory(session);
 }
 function liftEntry(lift) {
   return typeof lift === 'number' ? {name: 'Barbell Squat', weight: lift} : lift;
@@ -700,8 +777,8 @@ const cardioLabels = {
 
 function cardioTarget(exercise) {
   const units = cardioUnits[exercise.name];
+  if (Object.hasOwn(cardioLabels, exercise.unit)) return {unit: exercise.unit, amount: exercise.amount};
   if (!units) return null;
-  if (units.includes(exercise.unit)) return {unit: exercise.unit, amount: exercise.amount};
   return {unit: units[0], amount: units[0] === 'jumps' ? exercise.reps : null};
 }
 
@@ -713,7 +790,7 @@ function cardioInput(unit, amount, attributes) {
 }
 
 function validCardio(unit, amount) {
-  return Number.isFinite(amount) && amount > 0 && (unit !== 'jumps' || Number.isInteger(amount));
+  return Number.isFinite(amount) && amount > 0 && amount <= 1000000 && (unit !== 'jumps' || Number.isInteger(amount));
 }
 
 function exerciseMeasurement(exercise) {
@@ -818,31 +895,38 @@ function remove(index) {
 let workoutTimer;
 let workoutStartedAt;
 
+let activeWorkout;
+
 function start(i) {
-  const routine = routines[i];
+  startWorkout(routines[i]);
+}
+
+function startWorkout(routine) {
+  activeWorkout = routine;
   const exercises = routine.exercises.map((exercise, index) => {
     const {name, sets, reps, weight} = exercise;
     const target = cardioTarget(exercise);
     const setRows = Array.from({length: Math.min(sets, 20)}, (_, set) => {
       const id = 'set-weight-' + index + '-' + set;
-      const checkbox = '<label><input type="checkbox" class="setCheck" onchange="updateWorkoutProgress()"> Set ' +
+      const checkbox = '<label><input type="checkbox" class="setCheck" onchange="updateWorkoutProgress(this)"> Set ' +
         (set + 1) + '</label>';
       if (target) return '<div class="row set-row">' + checkbox +
         cardioInput(target.unit, target.amount, 'class="session-cardio"') + '</div>';
-      return '<div class="row set-row">' + checkbox + '<label>Reps <input class="session-reps" type="number" min="1" step="1" required value="' +
-        safe(reps) + '"></label><label for="' + id + '">Weight (lb)</label><input id="' + id +
-        '" class="session-weight" type="number" min="0" step="any" required aria-label="' + safe(name + ', set ' +
-        (set + 1) + ' weight (lb)') + '" value="' + safe(weight) + '"></div>';
+      return '<div class="row set-row">' + checkbox + '<label>Reps <input class="session-reps" type="number" min="1" max="10000" step="1" required value="' +
+        (reps == null ? '' : safe(reps)) + '"></label><label for="' + id + '">Weight (lb)</label><input id="' + id +
+        '" class="session-weight" type="number" min="0" step="any" max="10000" required aria-label="' + safe(name + ', set ' +
+        (set + 1) + ' weight (lb)') + '" value="' + (weight == null ? '' : safe(weight)) + '"></div>';
     }).join('');
     return '<div class="exercise session-exercise"><b>' + safe(name) + '</b>' + formPicture(name, name, true) +
       '<p class="muted">' + (target && !validCardio(target.unit, target.amount)
         ? 'Enter a measurement for each set.' : (target ? safe(exerciseMeasurement(exercise)) :
-          safe(reps) + ' reps') + ' per set') + '</p>' + setRows + '</div>';
+          (reps == null ? 'Enter reps' : safe(reps) + ' reps')) + ' per set') + '</p>' +
+      (exercise.prescription ? '<p class="muted">' + safe(exercise.prescription) + '</p>' : '') + setRows + '</div>';
   }).join('');
   show(routine.name, '<div class="workout-status"><div class="row"><span>Elapsed <strong id="workoutElapsed">0:00</strong></span>' +
     '<span id="workoutSetCount" class="muted"></span></div>' +
     '<progress id="workoutProgress" aria-label="Workout sets completed" value="0"></progress></div>' +
-    exercises + '<button class="full" style="margin-top:14px" onclick="finishCustom(' + i + ')">Finish workout</button>');
+    exercises + '<button class="full" style="margin-top:14px" onclick="finishCustom()">Finish workout</button>');
   workoutStartedAt = performance.now();
   const timer = document.getElementById('workoutElapsed');
   clearInterval(workoutTimer);
@@ -852,7 +936,8 @@ function start(i) {
   updateWorkoutProgress();
 }
 
-function updateWorkoutProgress() {
+function updateWorkoutProgress(changed) {
+  if (changed?.checked) navigator.vibrate?.(15);
   const sets = [...document.querySelectorAll('#dialogBody .setCheck')];
   const completed = sets.filter(set => set.checked).length;
   const progress = document.getElementById('workoutProgress');
@@ -861,8 +946,9 @@ function updateWorkoutProgress() {
   document.getElementById('workoutSetCount').textContent = completed + ' / ' + sets.length + ' sets';
 }
 
-function finishCustom(i) {
-  const routine = routines[i];
+function finishCustom() {
+  const routine = activeWorkout;
+  if (!routine) return;
   const rows = Array.from(document.querySelectorAll('#dialogBody .session-exercise'));
   const duration = Math.floor((performance.now() - workoutStartedAt) / 1000);
   const completedSets = rows.flatMap((row, index) =>
@@ -877,11 +963,13 @@ function finishCustom(i) {
       }] : []
     )
   );
+  if (!completedSets.length) return alert('Check off at least one completed set.');
   if (completedSets.some(set => set.target ? !validCardio(set.target.unit, set.amount.valueAsNumber) :
     !set.weight.validity.valid || !set.reps.validity.valid)) {
     return alert('Enter valid measurements for completed sets.');
   }
-  if (document.querySelector('#dialogBody .setCheck:not(:checked)') &&
+  const allSets = !document.querySelector('#dialogBody .setCheck:not(:checked)');
+  if (!allSets &&
       !confirm('Some sets are incomplete. Finish anyway?')) return;
 
   const bests = strengthBests();
@@ -907,7 +995,9 @@ function finishCustom(i) {
     return {name, number, weight, reps, pr: weightPR || repPR};
   });
 
-  complete(routine.name, Array.from(records, ([name, weight]) => ({name, weight})), sets, duration);
+  activeWorkout = null;
+  const assignment = routine.planId ? {planId: routine.planId, planDay: routine.planDay, allSets} : {};
+  complete(routine.name, Array.from(records, ([name, weight]) => ({name, weight})), sets, duration, assignment);
   closeDialog();
   tab('progress');
 }

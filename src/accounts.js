@@ -34,9 +34,9 @@ function action(label, handler, target = account) {
   };
   target.append(button);
 }
-async function portal(user, action) {
+async function portal(user, action, options = {}) {
   const response = await fetch(`/api/portal?action=${action}`, {
-    headers: {Authorization: `Bearer ${await user.getIdToken()}`}, cache: 'no-store'
+    ...options, headers: {Authorization: `Bearer ${await user.getIdToken()}`, ...options.headers}, cache: 'no-store'
   });
   const result = await response.json().catch(() => null);
   if (!result || !response.ok) {
@@ -61,34 +61,100 @@ function showSignIn() {
     report('If the account exists, check your inbox for a reset link.');
   });
 }
-function showPlan(plan) {
-  window.show(plan.name, '');
-  const body = document.getElementById('dialogBody');
-  body.dataset.clientPlan = 'true';
-  body.append(card(`Version ${plan.version}`, [plan.goal, plan.startDate, plan.endDate, plan.coachNotes].filter(Boolean).join(' · ')));
-  for (const day of plan.days || []) {
-    const section = card(day.name || 'Workout day', '');
-    for (const exercise of day.exercises || []) {
-      const exerciseCard = card(exercise.name, [
-        `${exercise.sets} sets`, exercise.reps ? `${exercise.reps} reps` : '', exercise.load,
-        exercise.rest ? `${exercise.rest} sec rest` : '', exercise.notes
-      ].filter(Boolean).join(' · '));
-      const preview = document.createElement('div');
-      preview.style.cssText = 'max-width:260px;margin:12px auto';
-      preview.innerHTML = window.formPicture(exercise.name, exercise.name, true);
-      exerciseCard.append(preview);
-      section.append(exerciseCard);
+let activeAccount;
+let plans = [];
+let syncTask;
+let syncRevision = 0;
+const syncStatus = document.getElementById('workoutSyncStatus');
+const outboxKey = uid => 'pp_vercel_demo_workout_outbox_' + uid;
+const outbox = uid => JSON.parse(localStorage.getItem(outboxKey(uid)) || '{}');
+const persistOutbox = (uid, entries) => localStorage.setItem(outboxKey(uid), JSON.stringify(entries));
+
+function renderAssignments() {
+  assigned.replaceChildren(...plans.map(plan => {
+    const days = (plan.days || []).map((day, index) => ({day, index})).filter(({day}) => day?.exercises?.length);
+    const completed = new Set(window.completedCoachDays(plan.id));
+    const done = days.length > 0 && days.every(({index}) => completed.has(index));
+    const item = card(plan.name, done ? 'Completed · Coach assigned' :
+      plan.archived ? 'Previous coach workout' : 'Coach assigned');
+    item.classList.toggle('coach-completed', done);
+    if (plan.coachNotes) {
+      const notes = document.createElement('p');
+      notes.textContent = plan.coachNotes;
+      item.append(notes);
     }
-    body.append(section);
-  }
+    for (const {day, index} of days) {
+      const dayName = days.length === 1 ? 'workout' : day.name || 'Day ' + (index + 1);
+      action((completed.has(index) ? 'Repeat ' : 'Start ') + dayName, () => window.startCoachDay(plan, index), item);
+    }
+    return item;
+  }));
 }
+window.renderCoachAssignments = renderAssignments;
+
+window.queueWorkoutSync = (uid, session, deleting) => {
+  if (activeAccount?.uid !== uid) return;
+  const entries = outbox(uid);
+  entries[session.id] = {session, deleting: Boolean(deleting), revision: crypto.randomUUID()};
+  persistOutbox(uid, entries);
+  syncRevision++;
+  renderAssignments();
+  syncWorkouts(activeAccount);
+};
+
+function syncWorkouts(user) {
+  if (activeAccount !== user) return;
+  if (syncTask?.user === user) return syncTask.promise;
+  const task = {user};
+  syncTask = task;
+  task.promise = (async () => {
+    const {uid} = user;
+    while (activeAccount === user) {
+      const pending = Object.values(outbox(uid));
+      if (!pending.length) break;
+      const {session, deleting, revision} = pending[0];
+      try {
+        await portal(user, deleting ? 'workout-history&id=' + encodeURIComponent(session.id) : 'workout-history',
+          deleting ? {method:'DELETE'} :
+            {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(session)});
+      } catch {
+        if (activeAccount === user) {
+          syncStatus.hidden = false;
+          syncStatus.textContent = 'Workout saved on this device. Website sync is pending.';
+        }
+        return;
+      }
+      const latest = outbox(uid);
+      if (latest[session.id]?.revision === revision) delete latest[session.id];
+      persistOutbox(uid, latest);
+    }
+    if (activeAccount !== user) return;
+    syncStatus.hidden = true;
+    const before = syncRevision;
+    try {
+      const {workouts} = await portal(user, 'workout-history');
+      if (activeAccount === user && before === syncRevision) {
+        window.mergeWorkoutHistory(workouts, new Set(Object.keys(outbox(uid))));
+        renderAssignments();
+      }
+    } catch { /* An account without a client profile can still use on-device training. */ }
+  })().finally(() => {
+    if (syncTask === task) syncTask = null;
+    if (activeAccount === user && !syncStatus.hidden) return;
+    if (activeAccount === user && Object.keys(outbox(user.uid)).length) syncWorkouts(user);
+  });
+  return task.promise;
+}
+window.addEventListener('online', () => { if (activeAccount) syncWorkouts(activeAccount); });
+
 async function renderAccount(user) {
   const current = ++generation;
   clearTimeout(timer);
+  activeAccount = user;
+  plans = [];
+  syncStatus.hidden = true;
+  window.selectWorkoutAccount(user?.uid || null);
   controls.replaceChildren(); assigned.replaceChildren(); account.replaceChildren(); sessions.replaceChildren();
-  if (document.getElementById('dialogBody').dataset.clientPlan) {
-    window.closeDialog(); delete document.getElementById('dialogBody').dataset.clientPlan;
-  }
   report(''); window.setAccountName?.(null);
   if (!user) { sessions.textContent = 'Sign in to see your upcoming sessions.'; return showSignIn(); }
   action('Sign out', () => signOut(auth));
@@ -100,17 +166,13 @@ async function renderAccount(user) {
   if (staff?.active === true && staff.role === 'admin') await renderCoach(current, user, staff);
   if (current !== generation) return;
   const refresh = async () => {
+    syncWorkouts(user);
     const results = await Promise.allSettled([portal(user, 'workout-plans'), portal(user, 'sessions')]);
     if (current !== generation) return;
     if (results[0].status === 'fulfilled') {
-      const plans = results[0].value.plans.sort((a,b) => Number(a.archived) - Number(b.archived) || b.version - a.version);
-      assigned.replaceChildren(...plans.map(plan => {
-        const item = card(plan.name, plan.archived ? 'Previous workout plan' : 'From your coach · available on the website too');
-        action('View workout plan', () => showPlan(plan), item);
-        return item;
-      }));
-      if (!plans.length) assigned.textContent = 'Your coach has not delivered a workout plan yet.';
-    } else if (!staff) { assigned.textContent = results[0].reason.message; }
+      plans = results[0].value.plans.sort((a,b) => Number(a.archived) - Number(b.archived) || b.version - a.version);
+      renderAssignments();
+    }
     if (results[1].status === 'fulfilled') {
       const upcoming = results[1].value.appointments
         .filter(item => item.status === 'scheduled')
