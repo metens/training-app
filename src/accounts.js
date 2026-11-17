@@ -69,10 +69,15 @@ function showPlan(plan) {
   for (const day of plan.days || []) {
     const section = card(day.name || 'Workout day', '');
     for (const exercise of day.exercises || []) {
-      section.append(card(exercise.name, [
+      const exerciseCard = card(exercise.name, [
         `${exercise.sets} sets`, `${exercise.reps} reps`, exercise.load,
         exercise.rest ? `${exercise.rest} sec rest` : '', exercise.notes
-      ].filter(Boolean).join(' · ')));
+      ].filter(Boolean).join(' · '));
+      const preview = document.createElement('div');
+      preview.style.cssText = 'max-width:260px;margin:12px auto';
+      preview.innerHTML = window.formPicture(exercise.name, exercise.name, true);
+      exerciseCard.append(preview);
+      section.append(exerciseCard);
     }
     body.append(section);
   }
@@ -160,3 +165,4 @@ async function renderCoach(current, user, staff) {
   };
 }
 onAuthStateChanged(auth, user => renderAccount(user).catch(() => report('Could not load the account. Reload to try again.')));
+
