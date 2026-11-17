@@ -78,7 +78,7 @@
   <input id="weight" type="number" min="0" max="2000" step="any" placeholder="135" required>
   <button type="submit">Log lift</button></div>
 </form>
-<p id="liftStatus" class="muted" role="status"></p><div id="strengthRecords"></div></div><div class="card"><h3>Session history</h3><div id="history" class="muted"></div></div></section><section id="shop"><h2>Workout Shop</h2><p class="muted">Product previews only — no payments.</p><div id="products"></div></section><section id="account"><h2>My Account</h2><div class="card cloud-account"><h3>Client account</h3><div id="cloudAccount">Loading sign-in…</div><div id="coachControls"></div><p id="cloudStatus" role="status"></p></div><div class="card"><h3>Appointments</h3><div id="clientSessions" aria-live="polite">Sign in to see your upcoming sessions.</div></div><div class="card"><h3>Messages</h3><button class="light full" onclick="show('Coach messages','Coach: How is your training going this week? (Simulated conversation)')">Open messages</button></div><div class="card"><h3>Pacific Performance</h3><button class="light full" onclick="window.open('https://pacificperformance.fit','_blank')">Visit official website</button></div></section></main><nav><button id="nav-home" onclick="tab('home')">⌂ Home</button><button id="nav-workouts" onclick="tab('workouts')">▤ Workouts</button><button id="nav-progress" onclick="tab('progress')">▥ Progress</button><button id="nav-shop" onclick="tab('shop')">◈ Shop</button><button id="nav-account" onclick="tab('account')">♙ Account</button></nav></div><div id="dialog"><div><div class="row"><h2 id="dialogTitle"></h2><button class="light" onclick="closeDialog()">✕</button></div><div id="dialogBody"></div></div></div><script>
+<p id="liftStatus" class="muted" role="status"></p><div id="strengthRecords"></div></div><div class="card"><h3>Session history</h3><div id="history" class="muted"></div></div></section><section id="shop"><h2>Workout Shop</h2><p class="muted">Product previews only — no payments.</p><div id="products"></div></section><section id="account"><h2>My Account</h2><div class="card cloud-account"><h3>Client account</h3><div id="cloudAccount">Loading sign-in…</div><div id="coachControls"></div><p id="cloudStatus" role="status"></p></div><div class="card"><h3>Appointments</h3><div id="clientSessions" aria-live="polite">Sign in to see your upcoming sessions.</div></div><div class="card"><h3>Messages</h3><button class="light full" onclick="show('Coach messages','Coach: How is your training going this week? (Simulated conversation)')">Open messages</button></div><div class="card"><h3>Pacific Performance</h3><button class="light full" onclick="window.open('https://pacificperformance.fit','_blank')">Visit official website</button></div></section></main><nav><button id="nav-home" onclick="tab('home')">⌂ Home</button><button id="nav-workouts" onclick="tab('workouts')">▤ Workouts</button><button id="nav-progress" onclick="tab('progress')">▥ Progress</button><button id="nav-shop" onclick="tab('shop')">◈ Shop</button><button id="nav-account" onclick="tab('account')">♙ Account</button></nav></div><div id="dialog"><div><div class="row"><h2 id="dialogTitle"></h2><button class="light" onclick="closeDialog()">✕</button></div><div id="dialogBody"></div></div></div><script src="/exercise-motion.js"></script><script>
 const key='pp_vercel_demo_',get=(n,d)=>{try{return JSON.parse(localStorage.getItem(key+n))??d}catch{return d}},put=(n,v)=>localStorage.setItem(key+n,JSON.stringify(v)),safe=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let routines=get('routines',[]),history=get('history',[]).filter(x=>x.name!=='Full Body Foundations'),lifts=get('lifts',[]),draft=[];const library=['Barbell Squat','Deadlift','Bench Press','Incline Bench Press','Weighted Pull-up','Pull-up','Romanian Deadlift','Bulgarian Split Squat','Barbell Row','Dumbbell Row','Push-up','Lunge','Pistol Squat','Single-Leg RDL','Nordic Curl','Box Jump','Jump Rope','Dead Bug','Plank','Hanging Leg Raise','Goblet Squat','Overhead Press','Running Intervals'];const formCues = [
   'Keep the bar across your upper back and your feet flat as you squat.',
   'Start with the bar over midfoot and keep it close as you stand.',
@@ -105,6 +105,9 @@ const key='pp_vercel_demo_',get=(n,d)=>{try{return JSON.parse(localStorage.getIt
   'Keep your shoulders relaxed and drive your arms forward and back.'
 ];
 
+const expandedExercises = globalThis.PPExerciseMotion;
+library.push(...expandedExercises.catalog.map(exercise => exercise.name));
+
 const coachFormCues = new Map([
   ['Bird Dog', 'From hands and knees, reach opposite arm and leg while keeping your hips level.'],
   ['Leg Press', 'Keep your back against the pad and press through both feet.'],
@@ -118,8 +121,15 @@ const coachFormCues = new Map([
 ]);
 
 function formPicture(name, label = name, animate = false) {
+  const expanded = expandedExercises.find(name);
+  if (expanded) {
+    const still = '<img class="form-picture" src="' + expandedExercises.asset(name) +
+      '" width="392" height="300" loading="lazy" decoding="async" alt="' + safe(label + ' demonstration') + '">';
+    return animate ? '<picture><source media="(prefers-reduced-motion: no-preference)" srcset="' +
+      expandedExercises.asset(name, true) + '">' + still + '</picture>' : still;
+  }
   const index = library.indexOf(name);
-  const cue = index < 0 ? coachFormCues.get(name) : formCues[index];
+  const cue = formCues[index] || coachFormCues.get(name);
   if (!cue) return '';
   const slug = name.toLowerCase().replaceAll(' ', '-');
   const still = '<img class="form-picture" src="/form/' + slug + '.webp" width="392" height="300" loading="lazy" decoding="async" alt="' + safe(label + ' form. ' + cue) + '">';
@@ -680,7 +690,9 @@ function saveLift(event) {
 }
 const cardioUnits = {
   'Jump Rope': ['jumps', 'seconds'],
-  'Running Intervals': ['miles', 'meters', 'seconds']
+  'Running Intervals': ['miles', 'meters', 'seconds'],
+  ...Object.fromEntries(expandedExercises.catalog.filter(item => item.measurement === 'time')
+    .map(item => [item.name, ['seconds']]))
 };
 const cardioLabels = {
   jumps: 'Total jumps', miles: 'Distance (mi)', meters: 'Distance (m)', seconds: 'Time (sec)'
@@ -708,7 +720,7 @@ function exerciseMeasurement(exercise) {
   const target = cardioTarget(exercise);
   if (!target) return exercise.reps === undefined ? exercise.weight + ' lb' :
     exercise.reps + (exercise.reps === 1 ? ' rep · ' : ' reps · ') + exercise.weight + ' lb';
-  if (!validCardio(target.unit, target.amount)) return 'Distance or time not recorded';
+  if (!validCardio(target.unit, target.amount)) return 'Measurement not recorded';
   const suffixes = {jumps: target.amount === 1 ? 'jump' : 'jumps', seconds: 'sec', miles: 'mi', meters: 'm'};
   return target.amount + ' ' + suffixes[target.unit];
 }
@@ -726,10 +738,11 @@ function drawBuilder(name) {
   const exercises = draft.map((exercise, index) => {
     const target = cardioTarget(exercise);
     const fields = target
-      ? '<label>Measure per set <select onchange="changeCardioUnit(' + index + ',this)">' +
-        cardioUnits[exercise.name].map(unit => '<option value="' + unit + '"' +
-          (unit === target.unit ? ' selected' : '') + '>' + cardioLabels[unit] + '</option>').join('') +
-        '</select></label>' + cardioInput(target.unit, target.amount,
+      ? (cardioUnits[exercise.name].length > 1
+        ? '<label>Measure per set <select onchange="changeCardioUnit(' + index + ',this)">' +
+          cardioUnits[exercise.name].map(unit => '<option value="' + unit + '"' +
+            (unit === target.unit ? ' selected' : '') + '>' + cardioLabels[unit] + '</option>').join('') +
+          '</select></label>' : '') + cardioInput(target.unit, target.amount,
           'oninput="draft[' + index + '].amount=this.valueAsNumber"')
       : '<label>Reps <input type="number" min="1" value="' + exercise.reps +
         '" onchange="draft[' + index + '].reps=Number(this.value)"></label>' +
@@ -764,8 +777,10 @@ function pickExercise() {
   filterLibrary('');
 }
 function filterLibrary(q) {
-  document.getElementById('libraryItems').innerHTML = library.filter(e => e.toLowerCase().includes(q.toLowerCase()))
-    .map(e => '<div class="exercise form-entry">' + formPicture(e) + '<div><b>' + safe(e) +
+  const query = q.trim().toLowerCase();
+  const match = expandedExercises.find(query);
+  document.getElementById('libraryItems').innerHTML = library.filter(e => e.toLowerCase().includes(query) || match?.name === e)
+    .map(e => '<div class="exercise form-entry">' + formPicture(e, e, Boolean(expandedExercises.find(e))) + '<div><b>' + safe(e) +
       '</b><br><button class="light" aria-label="Add ' + safe(e) + '" onclick="addExercise(' + library.indexOf(e) +
       ')">+ Add</button></div></div>').join('');
 }
@@ -928,7 +943,7 @@ function product(index) {
 function purchasePreview() {
   alert('Demo only — no purchase is processed.');
 }
-const liftNames = [...new Set([...library, ...coachFormCues.keys()])].sort((a, b) => a.localeCompare(b));
+const liftNames = [...new Set([...library, ...coachFormCues.keys()])].filter(name => !cardioTarget({name})).sort((a, b) => a.localeCompare(b));
 function openLiftPicker() {
   show('Choose a lift', '<label for="liftSearch">Search lifts</label>' +
     '<input id="liftSearch" class="full" type="search" oninput="renderLiftChoices(this.value)">' +
