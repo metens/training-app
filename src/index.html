@@ -29,6 +29,9 @@
 .set-row label:first-child{margin-right:auto}
 .history-session{display:grid;gap:5px}
 .set-row .session-reps{width:50px}
+.cardio-fields{display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin-top:9px}
+.cardio-fields label{display:grid;gap:4px}
+.cardio-fields select{padding:9px;border:1px solid #cbdac5;border-radius:9px;background:white;color:inherit;font:inherit}
 .set-row{column-gap:6px}
 .history-summary{display:flex;gap:4px 9px;flex-wrap:wrap}
 .history-metric,.history-prs{color:#173d2b}
@@ -302,7 +305,7 @@ window.cloudWorkoutTemplates = () => routines;
 window.openCloudWorkout = (name, exercises) => {
   const detail = exercises.map(exercise => '<div class="exercise"><b>' + safe(exercise.name) + '</b>' +
     formPicture(exercise.name, exercise.name, true) + '<p>' + safe(exercise.sets) + ' sets · ' +
-    safe(exercise.reps) + ' reps · ' + safe(exercise.weight) + ' lb</p></div>').join('');
+    safe(exerciseMeasurement(exercise)) + '</p></div>').join('');
   show(name, detail + '<button id="saveAssignedWorkout" class="full">Save to my workouts</button>');
   document.getElementById('saveAssignedWorkout').onclick = () => {
     routines.push({name, exercises});
@@ -446,12 +449,15 @@ function deleteSession(index) {
 
 function editSession(index) {
   const session = history[index];
-  const sets = (session.sets || []).map((set, i) =>
-    '<fieldset class="exercise"><legend>' + safe(set.name) + ' · Set ' + set.number + '</legend>' +
-    '<div class="row"><label>Reps <input name="reps-' + i + '" type="number" min="1" step="1" required value="' + set.reps +
-    '"></label><label>Weight (lb) <input name="weight-' + i + '" type="number" min="0" step="any" required value="' +
-    set.weight + '"></label></div></fieldset>'
-  ).join('');
+  const sets = (session.sets || []).map((set, i) => {
+    const target = cardioTarget(set);
+    const fields = target ? cardioInput(target.unit, target.amount, 'name="cardio-' + i + '"') :
+      '<label>Reps <input name="reps-' + i + '" type="number" min="1" step="1" required value="' + set.reps +
+      '"></label><label>Weight (lb) <input name="weight-' + i + '" type="number" min="0" step="any" required value="' +
+      set.weight + '"></label>';
+    return '<fieldset class="exercise"><legend>' + safe(set.name) + ' · Set ' + set.number + '</legend>' +
+      '<div class="row">' + fields + '</div></fieldset>';
+  }).join('');
   show('Edit workout', '<form onsubmit="saveSessionEdit(event,' + index + ')">' +
     '<label>Workout name <input name="workoutName" required value="' + safe(session.name) + '"></label>' +
     sets + '<p><button class="full" type="submit">Save changes</button></p></form>');
@@ -463,13 +469,26 @@ function saveSessionEdit(event, index) {
   const name = data.get('workoutName').trim();
   if (!name) return;
   const session = history[index];
+  const invalid = (session.sets || []).some((set, i) => {
+    const target = cardioTarget(set);
+    return target && !validCardio(target.unit, Number(data.get('cardio-' + i)));
+  });
+  if (invalid) return alert('Enter a positive measurement for each conditioning set.');
   session.name = name;
   if (session.sets) {
     session.sets.forEach((set, i) => {
+      const target = cardioTarget(set);
+      if (target) {
+        set.unit = target.unit;
+        set.amount = Number(data.get('cardio-' + i));
+        delete set.reps;
+        delete set.weight;
+        return;
+      }
       set.reps = Number(data.get('reps-' + i));
       set.weight = Number(data.get('weight-' + i));
     });
-    session.volume = session.sets.reduce((total, set) => total + set.weight * set.reps, 0);
+    session.volume = strengthVolume(session.sets);
   }
   saveSessionChanges();
 }
@@ -490,6 +509,10 @@ function saveSessionChanges() {
     }
     const records = new Map();
     for (const set of session.sets) {
+      if (cardioTarget(set)) {
+        delete set.pr;
+        continue;
+      }
       const {name, weight, reps} = set;
       const key = JSON.stringify([name, reps]);
       const weightPR = weight > (weights.get(name) || 0);
@@ -513,8 +536,7 @@ async function shareSession(index) {
   const summary = document.createElement('div');
   summary.innerHTML = sessionMetrics(session);
   const text = [session.name, session.date, ...Array.from(summary.children, node => node.textContent),
-    ...(session.sets || session.records || []).map(set => set.name + ' · ' + set.weight + ' lb' +
-      (set.reps === undefined ? '' : ' × ' + set.reps))].join('\n');
+    ...(session.sets || session.records || []).map(set => set.name + ' · ' + exerciseMeasurement(set))].join('\n');
   if (navigator.share) {
     try {
       await navigator.share({title: session.name, text});
@@ -546,7 +568,7 @@ function formatElapsed(seconds) {
 
 function sessionMetrics({duration, volume, sets}) {
   const total = Number.isFinite(volume) ? volume :
-    (Array.isArray(sets) ? sets.reduce((sum, set) => sum + set.weight * set.reps, 0) : undefined);
+    (Array.isArray(sets) ? strengthVolume(sets) : undefined);
   const volumeText = Number.isFinite(total)
     ? total.toLocaleString(undefined, {maximumFractionDigits: 2}) + ' lbs'
     : 'Not recorded';
@@ -556,7 +578,8 @@ function sessionMetrics({duration, volume, sets}) {
 }
 
 function sessionPRs(session) {
-  return session.sets ? session.sets.filter(set => set.pr) : (session.records || []);
+  return (session.sets ? session.sets.filter(set => set.pr) : (session.records || []))
+    .filter(set => !cardioTarget(set));
 }
 
 function showSession(index) {
@@ -572,11 +595,10 @@ function showSession(index) {
 
 function sessionExerciseRow(set, isPR = false) {
   const trophy = isPR ? '<span aria-label="Personal record">🏆</span> ' : '';
-  const reps = set.reps === undefined ? '' :
-    'Set ' + set.number + ' · ' + set.reps + (set.reps === 1 ? ' rep · ' : ' reps · ');
+  const number = set.number === undefined ? '' : 'Set ' + set.number + ' · ';
   return '<div class="exercise session-detail-row">' + formPicture(set.name) +
     '<div><b>' + trophy + safe(set.name) + '</b><p class="muted">' +
-    reps + set.weight + ' lb</p></div></div>';
+    number + safe(exerciseMeasurement(set)) + '</p></div></div>';
 }
 
 function strengthBests() {
@@ -632,7 +654,7 @@ function complete(name, records, sets, duration) {
   const date = new Date();
   const dayKey = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'),
     String(date.getDate()).padStart(2, '0')].join('-');
-  const volume = sets.reduce((total, set) => total + set.weight * set.reps, 0);
+  const volume = strengthVolume(sets);
   history.push({name, date: date.toLocaleDateString(), dayKey, records, sets, duration, volume, loggedAt: date.getTime()});
   put('history', history);
 }
@@ -656,23 +678,151 @@ function saveLift(event) {
   render();
   document.getElementById('liftStatus').textContent = name + ' logged at ' + weight + ' lb.';
 }
-function builder(){draft=[];drawBuilder('My Strength Workout')}function drawBuilder(name){show('Workout Builder','<p class="muted">Create a custom workout.</p><input id="workoutName" value="'+safe(name)+'" placeholder="Workout name" style="width:100%">'+draft.map((e,i)=>'<div class="exercise"><div class="row"><b>'+safe(e.name)+'</b><button class="light" onclick="removeDraft('+i+')">✕</button></div>'+formPicture(e.name, e.name, true)+'<div class="row" style="margin-top:9px"><label>Sets <input type="number" min="1" max="20" value="'+e.sets+'" onchange="draft['+i+'].sets=Number(this.value)"></label><label>Reps <input type="number" min="1" value="'+e.reps+'" onchange="draft['+i+'].reps=Number(this.value)"></label><label>lb <input type="number" min="0" value="'+e.weight+'" onchange="draft['+i+'].weight=Number(this.value)"></label></div></div>').join('')+'<button class="light full" style="margin-top:12px" onclick="pickExercise()">+ Add exercise</button><button class="full" style="margin-top:9px" onclick="saveWorkout()">Save workout</button>')}let draftTitle='My Strength Workout';function pickExercise(){draftTitle=document.getElementById('workoutName').value;show('Exercise Library','<input placeholder="Search exercises" oninput="filterLibrary(this.value)" style="width:100%"><div id="libraryItems"></div><button class="light full" onclick="drawBuilder(draftTitle)">Back</button>');filterLibrary('')}function filterLibrary(q){document.getElementById('libraryItems').innerHTML=library.filter(e=>e.toLowerCase().includes(q.toLowerCase())).map(e=>'<div class="exercise form-entry">'+formPicture(e)+'<div><b>'+safe(e)+'</b><br><button class="light" aria-label="Add '+safe(e)+'" onclick="addExercise('+library.indexOf(e)+')">+ Add</button></div></div>').join('')}function addExercise(i){draft.push({name:library[i],sets:3,reps:10,weight:0});drawBuilder(draftTitle)}function removeDraft(i){let n=document.getElementById('workoutName').value;draft.splice(i,1);drawBuilder(n)}function saveWorkout(){let name=document.getElementById('workoutName').value.trim();if(!name||!draft.length)return alert('Add a name and at least one exercise.');if(draft.some(e=>e.sets<1||e.sets>20||e.reps<1||e.weight<0))return alert('Check sets, reps and weights.');routines.push({name,exercises:JSON.parse(JSON.stringify(draft))});put('routines',routines);closeDialog();render()}function remove(i){if(!confirm('Delete workout?'))return;routines.splice(i,1);put('routines',routines);render()}let workoutTimer;
+const cardioUnits = {
+  'Jump Rope': ['jumps', 'seconds'],
+  'Running Intervals': ['miles', 'meters', 'seconds']
+};
+const cardioLabels = {
+  jumps: 'Total jumps', miles: 'Distance (mi)', meters: 'Distance (m)', seconds: 'Time (sec)'
+};
+
+function cardioTarget(exercise) {
+  const units = cardioUnits[exercise.name];
+  if (!units) return null;
+  if (units.includes(exercise.unit)) return {unit: exercise.unit, amount: exercise.amount};
+  return {unit: units[0], amount: units[0] === 'jumps' ? exercise.reps : null};
+}
+
+function cardioInput(unit, amount, attributes) {
+  const step = unit === 'jumps' ? '1' : 'any';
+  const min = unit === 'jumps' ? '1' : '0';
+  return '<label>' + cardioLabels[unit] + ' <input type="number" min="' + min + '" step="' + step +
+    '" required value="' + safe(amount ?? '') + '" ' + attributes + '></label>';
+}
+
+function validCardio(unit, amount) {
+  return Number.isFinite(amount) && amount > 0 && (unit !== 'jumps' || Number.isInteger(amount));
+}
+
+function exerciseMeasurement(exercise) {
+  const target = cardioTarget(exercise);
+  if (!target) return exercise.reps === undefined ? exercise.weight + ' lb' :
+    exercise.reps + (exercise.reps === 1 ? ' rep · ' : ' reps · ') + exercise.weight + ' lb';
+  if (!validCardio(target.unit, target.amount)) return 'Distance or time not recorded';
+  const suffixes = {jumps: target.amount === 1 ? 'jump' : 'jumps', seconds: 'sec', miles: 'mi', meters: 'm'};
+  return target.amount + ' ' + suffixes[target.unit];
+}
+
+function strengthVolume(sets) {
+  return sets.reduce((total, set) => total + (cardioTarget(set) ? 0 : set.weight * set.reps), 0);
+}
+
+function builder() {
+  draft = [];
+  drawBuilder('My Strength Workout');
+}
+
+function drawBuilder(name) {
+  const exercises = draft.map((exercise, index) => {
+    const target = cardioTarget(exercise);
+    const fields = target
+      ? '<label>Measure per set <select onchange="changeCardioUnit(' + index + ',this)">' +
+        cardioUnits[exercise.name].map(unit => '<option value="' + unit + '"' +
+          (unit === target.unit ? ' selected' : '') + '>' + cardioLabels[unit] + '</option>').join('') +
+        '</select></label>' + cardioInput(target.unit, target.amount,
+          'oninput="draft[' + index + '].amount=this.valueAsNumber"')
+      : '<label>Reps <input type="number" min="1" value="' + exercise.reps +
+        '" onchange="draft[' + index + '].reps=Number(this.value)"></label>' +
+        '<label>lb <input type="number" min="0" value="' + exercise.weight +
+        '" onchange="draft[' + index + '].weight=Number(this.value)"></label>';
+    return '<div class="exercise"><div class="row"><b>' + safe(exercise.name) +
+      '</b><button class="light" onclick="removeDraft(' + index + ')">✕</button></div>' +
+      formPicture(exercise.name, exercise.name, true) +
+      '<div class="' + (target ? 'cardio-fields' : 'row') + '" style="margin-top:9px">' +
+      '<label>Sets <input type="number" min="1" max="20" value="' + exercise.sets +
+      '" onchange="draft[' + index + '].sets=Number(this.value)"></label>' + fields + '</div></div>';
+  }).join('');
+  show('Workout Builder', '<p class="muted">Create a custom workout.</p>' +
+    '<input id="workoutName" value="' + safe(name) + '" placeholder="Workout name" style="width:100%">' +
+    exercises + '<button class="light full" style="margin-top:12px" onclick="pickExercise()">+ Add exercise</button>' +
+    '<button class="full" style="margin-top:9px" onclick="saveWorkout()">Save workout</button>');
+}
+
+function changeCardioUnit(index, selector) {
+  const unit = selector.value;
+  draft[index].unit = unit;
+  draft[index].amount = null;
+  selector.closest('label').nextElementSibling.outerHTML = cardioInput(unit, null,
+    'oninput="draft[' + index + '].amount=this.valueAsNumber"');
+}
+
+let draftTitle = 'My Strength Workout';
+function pickExercise() {
+  draftTitle = document.getElementById('workoutName').value;
+  show('Exercise Library', '<input placeholder="Search exercises" oninput="filterLibrary(this.value)" style="width:100%">' +
+    '<div id="libraryItems"></div><button class="light full" onclick="drawBuilder(draftTitle)">Back</button>');
+  filterLibrary('');
+}
+function filterLibrary(q) {
+  document.getElementById('libraryItems').innerHTML = library.filter(e => e.toLowerCase().includes(q.toLowerCase()))
+    .map(e => '<div class="exercise form-entry">' + formPicture(e) + '<div><b>' + safe(e) +
+      '</b><br><button class="light" aria-label="Add ' + safe(e) + '" onclick="addExercise(' + library.indexOf(e) +
+      ')">+ Add</button></div></div>').join('');
+}
+function addExercise(index) {
+  const name = library[index];
+  const unit = cardioUnits[name]?.[0];
+  draft.push(unit ? {name, sets: 3, unit, amount: null} : {name, sets: 3, reps: 10, weight: 0});
+  drawBuilder(draftTitle);
+}
+function removeDraft(index) {
+  const name = document.getElementById('workoutName').value;
+  draft.splice(index, 1);
+  drawBuilder(name);
+}
+function saveWorkout() {
+  const name = document.getElementById('workoutName').value.trim();
+  if (!name || !draft.length) return alert('Add a name and at least one exercise.');
+  const invalid = draft.find(exercise => {
+    if (!Number.isInteger(exercise.sets) || exercise.sets < 1 || exercise.sets > 20) return true;
+    const target = cardioTarget(exercise);
+    return target ? !validCardio(target.unit, target.amount) : exercise.reps < 1 || exercise.weight < 0;
+  });
+  if (invalid) return alert('Check the sets and measurement for ' + invalid.name + '.');
+  routines.push({name, exercises: structuredClone(draft)});
+  put('routines', routines);
+  closeDialog();
+  render();
+}
+function remove(index) {
+  if (!confirm('Delete workout?')) return;
+  routines.splice(index, 1);
+  put('routines', routines);
+  render();
+}
+let workoutTimer;
 let workoutStartedAt;
 
 function start(i) {
   const routine = routines[i];
   const exercises = routine.exercises.map((exercise, index) => {
     const {name, sets, reps, weight} = exercise;
+    const target = cardioTarget(exercise);
     const setRows = Array.from({length: Math.min(sets, 20)}, (_, set) => {
       const id = 'set-weight-' + index + '-' + set;
-      return '<div class="row set-row"><label><input type="checkbox" class="setCheck" onchange="updateWorkoutProgress()"> Set ' +
-        (set + 1) + '</label><label>Reps <input class="session-reps" type="number" min="1" step="1" required value="' +
+      const checkbox = '<label><input type="checkbox" class="setCheck" onchange="updateWorkoutProgress()"> Set ' +
+        (set + 1) + '</label>';
+      if (target) return '<div class="row set-row">' + checkbox +
+        cardioInput(target.unit, target.amount, 'class="session-cardio"') + '</div>';
+      return '<div class="row set-row">' + checkbox + '<label>Reps <input class="session-reps" type="number" min="1" step="1" required value="' +
         safe(reps) + '"></label><label for="' + id + '">Weight (lb)</label><input id="' + id +
         '" class="session-weight" type="number" min="0" step="any" required aria-label="' + safe(name + ', set ' +
         (set + 1) + ' weight (lb)') + '" value="' + safe(weight) + '"></div>';
     }).join('');
     return '<div class="exercise session-exercise"><b>' + safe(name) + '</b>' + formPicture(name, name, true) +
-      '<p class="muted">' + safe(reps) + ' reps per set</p>' + setRows + '</div>';
+      '<p class="muted">' + (target && !validCardio(target.unit, target.amount)
+        ? 'Enter a measurement for each set.' : (target ? safe(exerciseMeasurement(exercise)) :
+          safe(reps) + ' reps') + ' per set') + '</p>' + setRows + '</div>';
   }).join('');
   show(routine.name, '<div class="workout-status"><div class="row"><span>Elapsed <strong id="workoutElapsed">0:00</strong></span>' +
     '<span id="workoutSetCount" class="muted"></span></div>' +
@@ -705,13 +855,16 @@ function finishCustom(i) {
       set.querySelector('.setCheck').checked ? [{
         name: routine.exercises[index].name,
         number: setIndex + 1,
+        target: cardioTarget(routine.exercises[index]),
+        amount: set.querySelector('.session-cardio'),
         weight: set.querySelector('.session-weight'),
         reps: set.querySelector('.session-reps')
       }] : []
     )
   );
-  if (completedSets.some(set => !set.weight.validity.valid || !set.reps.validity.valid)) {
-    return alert('Enter valid weights and reps for completed sets.');
+  if (completedSets.some(set => set.target ? !validCardio(set.target.unit, set.amount.valueAsNumber) :
+    !set.weight.validity.valid || !set.reps.validity.valid)) {
+    return alert('Enter valid measurements for completed sets.');
   }
   if (document.querySelector('#dialogBody .setCheck:not(:checked)') &&
       !confirm('Some sets are incomplete. Finish anyway?')) return;
@@ -721,12 +874,14 @@ function finishCustom(i) {
   const repKey = (name, reps) => JSON.stringify([name, reps]);
   for (const session of history) {
     for (const set of session.sets || []) {
+      if (cardioTarget(set)) continue;
       const key = repKey(set.name, set.reps);
       repBests.set(key, Math.max(repBests.get(key) || 0, set.weight));
     }
   }
   const records = new Map();
-  const sets = completedSets.map(({name, number, weight: weightInput, reps: repsInput}) => {
+  const sets = completedSets.map(({name, number, target, amount, weight: weightInput, reps: repsInput}) => {
+    if (target) return {name, number, unit: target.unit, amount: amount.valueAsNumber};
     const weight = weightInput.valueAsNumber;
     const reps = repsInput.valueAsNumber;
     const key = repKey(name, reps);
