@@ -22,7 +22,7 @@
 .shop-cover{display:block;width:100%;padding:0;background:transparent}
 .shop-pictures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .shop-cover:focus-visible{outline:2px solid #39674b;outline-offset:4px}
-.new-sample{font-size:12px;min-height:44px;padding-inline:10px}.workout-status{position:sticky;top:0;z-index:1;background:white;padding:8px 0 12px;border-bottom:1px solid #e7eee2}
+.workout-status{position:sticky;top:0;z-index:1;background:white;padding:8px 0 12px;border-bottom:1px solid #e7eee2}
 #workoutElapsed{font-variant-numeric:tabular-nums}
 #workoutProgress{display:block;width:100%;height:12px;margin-top:7px;accent-color:#39674b}
 .set-row{justify-content:flex-start;margin:6px 0;flex-wrap:wrap}
@@ -74,7 +74,7 @@
 .header-copy p{color:#d5e4ce;font-size:13px;line-height:1.35;margin:0}
 .header-logo{align-self:center;justify-self:center;display:block;width:min(100%,96px);height:auto;aspect-ratio:1;object-fit:contain;filter:brightness(0) invert(1)}
 .app header,.app main section:not(#progress),#progress > :not(:has(.month-scroll)),.month-navigation{touch-action:pan-y pinch-zoom}
-.cloud-account form{display:grid;gap:8px}.cloud-account form label{display:grid;gap:4px}.cloud-account input,.cloud-account select{width:100%}.cloud-account input[type=checkbox]{width:auto}.cloud-account button{margin:4px 4px 4px 0}</style><div class="app"><header class="app-header"><div class="header-copy"><h1 id="title">Train with purpose.</h1><p>Strength · Running · Performance</p></div><img class="header-logo" src="/pacific-logo.png" alt="Pacific Performance Training" width="104" height="104"></header><main><section id="home" class="on"><h2 id="clientGreeting" hidden></h2><div class="card"><h3>Training overview</h3><div class="row"><div><strong id="total">0</strong><p class="muted">Sessions</p></div><div><strong id="routineCount">0</strong><p class="muted">Custom workouts</p></div><div><strong id="weeklyStreak">0 weeks</strong><p class="muted">Weekly streak</p></div></div><h4>Personal records</h4><div id="overviewPRs"></div></div><h2>Workout activity</h2><div id="workoutFeed"></div></section><section id="workouts"><div class="row"><h2>Workouts</h2><span class="pill">Training hub</span></div><div class="card"><h3>Workout Builder</h3><p class="muted">Build a routine with sets, reps and weights.</p><button class="full" onclick="builder()">+ Create workout</button></div><div id="clientAssignments"></div><p id="workoutSyncStatus" class="muted" role="status" hidden></p><div id="routines"></div><div id="assigned"></div></section><section id="progress"><h2>Progress</h2><div class="card"><h3>Training consistency</h3><strong id="progressTotal" style="font-size:36px">0</strong><p class="muted">Completed workouts</p><div class="bar"><div id="progressBar" style="width:0%"></div></div><p class="muted">Goal: 3 workouts</p><div id="trainingMonth"></div></div><div class="card"><h3>PR log</h3><p class="muted">Log a lift here or finish a workout to update your personal records.</p>
+.cloud-account form{display:grid;gap:8px}.cloud-account form label{display:grid;gap:4px}.cloud-account input,.cloud-account select{width:100%}.cloud-account input[type=checkbox]{width:auto}.cloud-account button{margin:4px 4px 4px 0}</style><div class="app"><header class="app-header"><div class="header-copy"><h1 id="title">Train with purpose.</h1><p>Strength · Running · Performance</p></div><img class="header-logo" src="/pacific-logo.png" alt="Pacific Performance Training" width="104" height="104"></header><main><section id="home" class="on"><h2 id="clientGreeting" hidden></h2><div class="card"><h3>Training overview</h3><div class="row"><div><strong id="total">0</strong><p class="muted">Sessions</p></div><div><strong id="routineCount">0</strong><p class="muted">Custom workouts</p></div><div><strong id="weeklyStreak">0 weeks</strong><p class="muted">Weekly streak</p></div></div><h4>Personal records</h4><div id="overviewPRs"></div></div><h2>Workout activity</h2><div id="workoutFeed"></div></section><section id="workouts"><div class="row"><h2>Workouts</h2><span class="pill">Training hub</span></div><div class="card"><h3>Workout Builder</h3><p class="muted">Build a routine with sets, reps and weights.</p><button class="full" onclick="builder()">+ Create workout</button></div><div id="clientAssignments"></div><p id="workoutSyncStatus" class="muted" role="status" hidden></p><div id="routines"></div></section><section id="progress"><h2>Progress</h2><div class="card"><h3>Training consistency</h3><strong id="progressTotal" style="font-size:36px">0</strong><p class="muted">Completed workouts</p><div class="bar"><div id="progressBar" style="width:0%"></div></div><p class="muted">Goal: 3 workouts</p><div id="trainingMonth"></div></div><div class="card"><h3>PR log</h3><p class="muted">Log a lift here or finish a workout to update your personal records.</p>
 <form id="manualLift" onsubmit="saveLift(event)">
   <span id="liftLabel">Lift</span>
   <button type="button" class="light full lift-picker" id="liftPicker" aria-labelledby="liftLabel liftSelection" aria-haspopup="dialog" onclick="openLiftPicker()"><span id="liftSelection">Choose a lift</span><span aria-hidden="true">⌄</span></button>
@@ -143,44 +143,7 @@ function formPicture(name, label = name, animate = false) {
     slug + '-motion.webp">' + still + '</picture>';
 }
 
-const coachPrograms = [
-  [['Deadlift'], ['Bench Press'], ['Bulgarian Split Squat'], ['Barbell Row'], ['Bird Dog']],
-  [['Barbell Squat', 'Back Squat'], ['Pull-up'], ['Romanian Deadlift'], ['Overhead Press', 'Shoulder Press'], ['Dead Bug']],
-  [['Leg Press'], ['Chest Press'], ['Hamstring Curl'], ['Lat Pulldown'], ['Ab Crunch']],
-  [['Kettlebell Squat'], ['Push-up'], ['Kettlebell Deadlift'], ['Dips'], ['Plank']]
-];
-
-let coachProgramIndex = get('sampleWorkout', -1);
-
-function tryCoachProgram() {
-  const choices = coachPrograms.map((_, index) => index).filter(index => index !== coachProgramIndex);
-  coachProgramIndex = choices[Math.floor(Math.random() * choices.length)];
-  put('sampleWorkout', coachProgramIndex);
-  renderAssigned();
-  document.querySelector('#assigned .new-sample').focus({preventScroll: true});
-}
-
-function renderAssigned() {
-  const card = document.getElementById('assigned');
-  const program = coachPrograms[coachProgramIndex];
-  card.innerHTML = program
-    ? '<div class="card"><div class="row"><span class="pill">COACH ASSIGNED</span>' +
-      '<button class="light new-sample" onclick="tryCoachProgram()">Try another</button></div>' +
-      '<h3>Sample workout</h3><p class="muted" aria-live="polite">' +
-      program.map(([name, label = name]) => safe(label)).join(' · ') +
-      '</p><button class="light full" onclick="assignedDetails()">View program</button></div>'
-    : '<div class="card"><h3>Coach-assigned sample</h3>' +
-      '<button class="light full" onclick="tryCoachProgram()">Try a sample workout</button></div>';
-}
-
-function assignedDetails() {
-  const entries = coachPrograms[coachProgramIndex].map(([name, label = name]) =>
-    '<div class="exercise"><b>' + safe(label) + '</b>' + formPicture(name, label, true) + '</div>'
-  );
-  show('Assigned workout', entries.join(''));
-}
-
-function tab(n){document.querySelectorAll('section').forEach(x=>x.classList.toggle('on',x.id===n));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.id==='nav-'+n));document.getElementById('title').textContent=({home:'Train with purpose.',workouts:'Built to perform.',progress:'Progress is earned.',shop:'Train your way.',account:'Your training hub.'})[n];window.scrollTo(0,0);render()}function show(t,body){document.getElementById('dialogTitle').textContent=t;document.getElementById('dialogBody').classList.remove('workout-actions');document.getElementById('dialogBody').innerHTML=body;document.getElementById('dialog').classList.add('on')}function closeDialog(){clearInterval(workoutTimer);document.getElementById('dialog').classList.remove('on')}function render(){renderWorkoutFeed();renderTrainingOverview();document.getElementById('total').textContent=history.length;document.getElementById('routineCount').textContent=routines.length;document.getElementById('progressTotal').textContent=history.length;document.getElementById('progressBar').style.width=Math.min(100,history.length/3*100)+'%';document.getElementById('routines').innerHTML=routines.map((r,i)=>'<div class="card"><span class="pill">CUSTOM WORKOUT</span><h3>'+safe(r.name)+'</h3><p class="muted">'+r.exercises.length+' exercises</p><div class="row"><button onclick="start('+i+')">Start workout</button><button class="light" onclick="viewWorkout(routines['+i+'])">View</button></div><button class="light" style="margin-top:10px" onclick="remove('+i+')">Delete</button></div>').join('');renderAssigned();renderTrainingMonth();renderSessionHistory();renderStrengthRecords()}function mondayOf(date) {
+function tab(n){document.querySelectorAll('section').forEach(x=>x.classList.toggle('on',x.id===n));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.id==='nav-'+n));document.getElementById('title').textContent=({home:'Train with purpose.',workouts:'Built to perform.',progress:'Progress is earned.',shop:'Train your way.',account:'Your training hub.'})[n];window.scrollTo(0,0);render()}function show(t,body){document.getElementById('dialogTitle').textContent=t;document.getElementById('dialogBody').classList.remove('workout-actions');document.getElementById('dialogBody').innerHTML=body;document.getElementById('dialog').classList.add('on')}function closeDialog(){clearInterval(workoutTimer);document.getElementById('dialog').classList.remove('on')}function render(){renderWorkoutFeed();renderTrainingOverview();document.getElementById('total').textContent=history.length;document.getElementById('routineCount').textContent=routines.length;document.getElementById('progressTotal').textContent=history.length;document.getElementById('progressBar').style.width=Math.min(100,history.length/3*100)+'%';document.getElementById('routines').innerHTML=routines.map((r,i)=>'<div class="card"><span class="pill">CUSTOM WORKOUT</span><h3>'+safe(r.name)+'</h3><p class="muted">'+r.exercises.length+' exercises</p><div class="row"><button onclick="start('+i+')">Start workout</button><button class="light" onclick="viewWorkout(routines['+i+'])">View</button></div><button class="light" style="margin-top:10px" onclick="remove('+i+')">Delete</button></div>').join('');renderTrainingMonth();renderSessionHistory();renderStrengthRecords()}function mondayOf(date) {
   const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   day.setDate(day.getDate() - (day.getDay() + 6) % 7);
   return day;
