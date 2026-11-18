@@ -180,7 +180,7 @@ function assignedDetails() {
   show('Assigned workout', entries.join(''));
 }
 
-function tab(n){document.querySelectorAll('section').forEach(x=>x.classList.toggle('on',x.id===n));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.id==='nav-'+n));document.getElementById('title').textContent=({home:'Train with purpose.',workouts:'Built to perform.',progress:'Progress is earned.',shop:'Train your way.',account:'Your training hub.'})[n];window.scrollTo(0,0);render()}function show(t,body){document.getElementById('dialogTitle').textContent=t;document.getElementById('dialogBody').classList.remove('workout-actions');document.getElementById('dialogBody').innerHTML=body;document.getElementById('dialog').classList.add('on')}function closeDialog(){clearInterval(workoutTimer);document.getElementById('dialog').classList.remove('on')}function render(){renderWorkoutFeed();renderTrainingOverview();document.getElementById('total').textContent=history.length;document.getElementById('routineCount').textContent=routines.length;document.getElementById('progressTotal').textContent=history.length;document.getElementById('progressBar').style.width=Math.min(100,history.length/3*100)+'%';document.getElementById('routines').innerHTML=routines.map((r,i)=>'<div class="card"><span class="pill">CUSTOM WORKOUT</span><h3>'+safe(r.name)+'</h3><p class="muted">'+r.exercises.length+' exercises</p><div class="row"><button onclick="start('+i+')">Start workout</button><button class="light" onclick="remove('+i+')">Delete</button></div></div>').join('');renderAssigned();renderTrainingMonth();renderSessionHistory();renderStrengthRecords()}function mondayOf(date) {
+function tab(n){document.querySelectorAll('section').forEach(x=>x.classList.toggle('on',x.id===n));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.id==='nav-'+n));document.getElementById('title').textContent=({home:'Train with purpose.',workouts:'Built to perform.',progress:'Progress is earned.',shop:'Train your way.',account:'Your training hub.'})[n];window.scrollTo(0,0);render()}function show(t,body){document.getElementById('dialogTitle').textContent=t;document.getElementById('dialogBody').classList.remove('workout-actions');document.getElementById('dialogBody').innerHTML=body;document.getElementById('dialog').classList.add('on')}function closeDialog(){clearInterval(workoutTimer);document.getElementById('dialog').classList.remove('on')}function render(){renderWorkoutFeed();renderTrainingOverview();document.getElementById('total').textContent=history.length;document.getElementById('routineCount').textContent=routines.length;document.getElementById('progressTotal').textContent=history.length;document.getElementById('progressBar').style.width=Math.min(100,history.length/3*100)+'%';document.getElementById('routines').innerHTML=routines.map((r,i)=>'<div class="card"><span class="pill">CUSTOM WORKOUT</span><h3>'+safe(r.name)+'</h3><p class="muted">'+r.exercises.length+' exercises</p><div class="row"><button onclick="start('+i+')">Start workout</button><button class="light" onclick="viewWorkout(routines['+i+'])">View</button></div><button class="light" style="margin-top:10px" onclick="remove('+i+')">Delete</button></div>').join('');renderAssigned();renderTrainingMonth();renderSessionHistory();renderStrengthRecords()}function mondayOf(date) {
   const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   day.setDate(day.getDate() - (day.getDay() + 6) % 7);
   return day;
@@ -726,6 +726,33 @@ function coachExercise(exercise) {
     !load || /^(?:body\s*weight|bw)$/i.test(load) ? 0 : null;
   const reps = Number.parseInt(repsText, 10) || null;
   return {name, sets, reps, weight, prescription};
+}
+
+function viewWorkout(routine, assigned = false) {
+  const exercises = assigned ? routine.exercises.map(coachExercise) : routine.exercises;
+  const totalSets = exercises.reduce((total, exercise) => total + Number(exercise.sets || 0), 0);
+  const details = exercises.map((exercise, index) => {
+    const original = routine.exercises[index];
+    const target = cardioTarget(exercise);
+    const measurement = assigned
+      ? [original.reps && original.reps + ' reps per set', original.load,
+         original.rest && original.rest + ' sec rest', original.notes].filter(Boolean).join(' · ')
+      : exerciseMeasurement(exercise) + ' per set';
+    const reps = assigned ? String(original.reps ?? '').trim() : String(exercise.reps ?? '');
+    const totalReps = !target && /^\d+$/.test(reps)
+      ? ' · ' + (Number(reps) * Number(exercise.sets)) + ' total reps' : '';
+    return '<div class="exercise"><b>' + safe(exercise.name) + '</b>' +
+      formPicture(exercise.name, exercise.name, true) + '<p>' + safe(exercise.sets) +
+      ' sets' + safe(totalReps) + '</p><p class="muted">' + safe(measurement) + '</p></div>';
+  }).join('');
+  show(routine.name, '<p class="muted">' + exercises.length + ' exercises · ' + totalSets +
+    ' total sets</p>' + details);
+}
+
+function viewCoachDay(plan, dayIndex) {
+  const day = plan.days[dayIndex];
+  viewWorkout({name: plan.days.length === 1 ? plan.name : plan.name + ' · ' +
+    (day.name || 'Day ' + (dayIndex + 1)), exercises: day.exercises}, true);
 }
 
 function startCoachDay(plan, dayIndex) {
