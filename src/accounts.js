@@ -85,7 +85,11 @@ function renderAssignments() {
     }
     for (const {day, index} of days) {
       const dayName = days.length === 1 ? 'workout' : day.name || 'Day ' + (index + 1);
-      action((completed.has(index) ? 'Repeat ' : 'Start ') + dayName, () => window.startCoachDay(plan, index), item);
+      const buttons = document.createElement('div');
+      buttons.className = 'row';
+      action((completed.has(index) ? 'Repeat ' : 'Start ') + dayName, () => window.startCoachDay(plan, index), buttons);
+      action('View', () => window.viewCoachDay(plan, index), buttons);
+      item.append(buttons);
     }
     return item;
   }));
