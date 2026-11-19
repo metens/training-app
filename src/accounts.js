@@ -151,10 +151,116 @@ function syncWorkouts(user) {
 }
 window.addEventListener('online', () => { if (activeAccount) syncWorkouts(activeAccount); });
 
+const messageCard = document.getElementById('clientMessageCard');
+const messageNotice = document.getElementById('messageNotice');
+let messageState = {messages:[],thread:{}};
+let messageTimer;
+let messageRequest = false;
+let messageUser = null;
+let draftMessage = null;
+
+function renderMessageNotice() {
+  const unread = (messageState.thread.lastStaffAt || 0) > (messageState.thread.clientReadAt || 0);
+  messageNotice.hidden = !messageUser || !unread;
+  messageNotice.textContent = unread ? 'Your coach replied · View message' : '';
+}
+function messageBubble(message) {
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble' + (message.sender === 'staff' ? ' coach-reply' : '');
+  const label = document.createElement('strong');
+  label.textContent = message.sender === 'staff' ? 'Coach' : 'You';
+  const text = document.createElement('p');
+  text.style.whiteSpace = 'pre-wrap';
+  text.textContent = message.text;
+  const date = document.createElement('small');
+  date.textContent = new Date(message.sentAt).toLocaleString();
+  bubble.append(label,text,date);
+  return bubble;
+}
+async function acknowledgeMessages(user) {
+  const latest = messageState.messages.filter(message => message.sender === 'staff').at(-1);
+  if (!latest || latest.sentAt <= (messageState.thread.clientReadAt || 0)) return;
+  await portal(user,'messages',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'read',id:latest.id})});
+  if (user !== messageUser) return;
+  messageState.thread.clientReadAt = latest.sentAt;
+  renderMessageNotice();
+}
+async function refreshMessages() {
+  const user = messageUser;
+  if (!user || messageRequest) return;
+  messageRequest = true;
+  try {
+    const result = await portal(user,'messages');
+    if (messageUser !== user) return;
+    messageState = result;
+    renderMessageNotice();
+    const list = document.getElementById('clientThread');
+    if (list && document.getElementById('dialog').classList.contains('on')) {
+      list.replaceChildren(...result.messages.map(messageBubble));
+      if (!result.messages.length) list.textContent = 'Send a message to your coach.';
+      await acknowledgeMessages(user);
+    }
+  } catch {
+    const feedback = document.getElementById('messageFeedback');
+    if (user === messageUser && feedback) feedback.textContent = 'Messages could not be refreshed. Try again shortly.';
+  } finally { messageRequest = false; }
+}
+
+function resetMessages(user) {
+  clearInterval(messageTimer);
+  messageUser = user;
+  messageState = {messages:[],thread:{}};
+  draftMessage = null;
+  messageCard.hidden = !user;
+  messageNotice.hidden = true;
+  if (document.getElementById('clientThread')) window.closeDialog();
+  if (user) {
+    refreshMessages();
+    messageTimer = setInterval(refreshMessages,15000);
+  }
+}
+async function openMessages() {
+  const user = messageUser;
+  if (!user) return;
+  window.show('Messages with your coach',
+    '<div id="clientThread" class="message-thread"></div><form id="clientMessageForm">' +
+    '<label for="clientMessageText">Message</label><textarea id="clientMessageText" maxlength="4000" required rows="4"></textarea>' +
+    '<button type="submit">Send message</button><p id="messageFeedback" class="muted" role="status"></p></form>');
+  const list = document.getElementById('clientThread');
+  list.replaceChildren(...messageState.messages.map(messageBubble));
+  const form = document.getElementById('clientMessageForm');
+  form.onsubmit = async event => {
+    event.preventDefault();
+    if (user !== messageUser || !form.reportValidity()) return;
+    const input = form.querySelector('textarea');
+    const text = input.value.trim();
+    if (!text) return;
+    if (draftMessage?.text !== text) draftMessage = {id:crypto.randomUUID(),text};
+    const button = form.querySelector('button');
+    const feedback = form.querySelector('[role=status]');
+    button.disabled = true;
+    feedback.textContent = 'Sending…';
+    try {
+      await portal(user,'messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(draftMessage)});
+      if (user !== messageUser) return;
+      input.value = '';
+      draftMessage = null;
+      feedback.textContent = 'Message sent.';
+      await refreshMessages();
+    } catch (error) { if (user === messageUser) feedback.textContent = error.message; }
+    finally { button.disabled = false; }
+  };
+  await refreshMessages();
+}
+document.getElementById('openClientMessages').onclick = openMessages;
+messageNotice.onclick = openMessages;
+
 async function renderAccount(user) {
   const current = ++generation;
   clearTimeout(timer);
   activeAccount = user;
+  resetMessages(user);
   plans = [];
   syncStatus.hidden = true;
   window.selectWorkoutAccount(user?.uid || null);
