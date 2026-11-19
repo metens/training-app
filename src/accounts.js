@@ -175,7 +175,69 @@ function messageBubble(message) {
   const date = document.createElement('small');
   date.textContent = new Date(message.sentAt).toLocaleString();
   bubble.append(label,text,date);
+  if (message.sender === 'staff') addMessageReaction(bubble,message);
   return bubble;
+}
+function addMessageReaction(bubble,message) {
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'reaction-trigger';
+  trigger.textContent = message.thumbsUp ? '👍 1' : 'React';
+  trigger.setAttribute('aria-label',message.thumbsUp ? 'Change thumbs-up reaction' : 'React to coach message');
+  trigger.setAttribute('aria-expanded','false');
+  const options = document.createElement('div');
+  options.className = 'reaction-options';
+  options.hidden = true;
+  const thumb = document.createElement('button');
+  thumb.type = 'button';
+  thumb.textContent = message.thumbsUp ? 'Remove 👍' : '👍 Thumbs up';
+  thumb.setAttribute('aria-pressed',String(Boolean(message.thumbsUp)));
+  const feedback = document.createElement('span');
+  feedback.setAttribute('role','status');
+  feedback.className = 'muted';
+  options.append(thumb,feedback);
+  bubble.append(trigger,options);
+  const reveal = () => {
+    options.hidden = false;
+    trigger.setAttribute('aria-expanded','true');
+  };
+  trigger.onclick = () => {
+    options.hidden = !options.hidden;
+    trigger.setAttribute('aria-expanded',String(!options.hidden));
+  };
+  let hold;
+  let origin;
+  const cancel = () => { clearTimeout(hold); origin = null; };
+  bubble.addEventListener('pointerdown',event => {
+    if (event.target.closest('button') || !event.isPrimary || event.button !== 0) return;
+    origin = {x:event.clientX,y:event.clientY};
+    hold = setTimeout(() => { reveal(); navigator.vibrate?.(15); },500);
+  });
+  bubble.addEventListener('pointermove',event => {
+    if (origin && Math.hypot(event.clientX-origin.x,event.clientY-origin.y)>10) cancel();
+  });
+  for (const name of ['pointerup','pointercancel','pointerleave']) bubble.addEventListener(name,cancel);
+  bubble.addEventListener('contextmenu',event => {event.preventDefault(); reveal();});
+  thumb.onclick = async () => {
+    const user = messageUser;
+    if (!user) return;
+    thumb.disabled = true;
+    feedback.textContent = '';
+    const thumbsUp = !message.thumbsUp;
+    try {
+      await portal(user,'messages',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'react',id:message.id,thumbsUp})});
+      if (messageUser !== user) return;
+      message.thumbsUp = thumbsUp;
+      trigger.textContent = thumbsUp ? '👍 1' : 'React';
+      trigger.setAttribute('aria-label',thumbsUp ? 'Change thumbs-up reaction' : 'React to coach message');
+      thumb.textContent = thumbsUp ? 'Remove 👍' : '👍 Thumbs up';
+      thumb.setAttribute('aria-pressed',String(thumbsUp));
+      options.hidden = true;
+      trigger.setAttribute('aria-expanded','false');
+    } catch { feedback.textContent = 'Reaction could not be saved. Try again.'; }
+    finally { thumb.disabled = false; }
+  };
 }
 async function acknowledgeMessages(user) {
   const latest = messageState.messages.filter(message => message.sender === 'staff').at(-1);
