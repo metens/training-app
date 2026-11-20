@@ -182,7 +182,8 @@ function addMessageReaction(bubble,message) {
   const trigger = document.createElement('button');
   trigger.type = 'button';
   trigger.className = 'reaction-trigger';
-  trigger.textContent = message.thumbsUp ? '👍 1' : 'React';
+  trigger.textContent = '👍 1';
+  trigger.hidden = !message.thumbsUp;
   trigger.setAttribute('aria-label',message.thumbsUp ? 'Change thumbs-up reaction' : 'React to coach message');
   trigger.setAttribute('aria-expanded','false');
   const options = document.createElement('div');
@@ -190,34 +191,43 @@ function addMessageReaction(bubble,message) {
   options.hidden = true;
   const thumb = document.createElement('button');
   thumb.type = 'button';
-  thumb.textContent = message.thumbsUp ? 'Remove 👍' : '👍 Thumbs up';
+  thumb.textContent = '👍';
+  thumb.setAttribute('aria-label',message.thumbsUp ? 'Remove thumbs-up reaction' : 'Thumbs up');
   thumb.setAttribute('aria-pressed',String(Boolean(message.thumbsUp)));
   const feedback = document.createElement('span');
   feedback.setAttribute('role','status');
   feedback.className = 'muted';
   options.append(thumb,feedback);
   bubble.append(trigger,options);
+  bubble.tabIndex = 0;
+  bubble.setAttribute('aria-label','Coach message. Hold to react, or press Enter.');
   const reveal = () => {
+    document.querySelectorAll('.reaction-options').forEach(item => { item.hidden = true; });
     options.hidden = false;
     trigger.setAttribute('aria-expanded','true');
   };
   trigger.onclick = () => {
-    options.hidden = !options.hidden;
-    trigger.setAttribute('aria-expanded',String(!options.hidden));
+    if (options.hidden) reveal();
+    else options.hidden = true;
   };
   let hold;
   let origin;
   const cancel = () => { clearTimeout(hold); origin = null; };
   bubble.addEventListener('pointerdown',event => {
     if (event.target.closest('button') || !event.isPrimary || event.button !== 0) return;
+    cancel();
     origin = {x:event.clientX,y:event.clientY};
-    hold = setTimeout(() => { reveal(); navigator.vibrate?.(15); },500);
+    hold = setTimeout(() => { if (bubble.isConnected) { reveal(); navigator.vibrate?.(15); } },500);
   });
   bubble.addEventListener('pointermove',event => {
     if (origin && Math.hypot(event.clientX-origin.x,event.clientY-origin.y)>10) cancel();
   });
   for (const name of ['pointerup','pointercancel','pointerleave']) bubble.addEventListener(name,cancel);
   bubble.addEventListener('contextmenu',event => {event.preventDefault(); reveal();});
+  bubble.addEventListener('keydown',event => {
+    if (event.target !== bubble || !['Enter',' '].includes(event.key)) return;
+    event.preventDefault(); reveal(); thumb.focus();
+  });
   thumb.onclick = async () => {
     const user = messageUser;
     if (!user) return;
@@ -229,9 +239,10 @@ function addMessageReaction(bubble,message) {
         body:JSON.stringify({action:'react',id:message.id,thumbsUp})});
       if (messageUser !== user) return;
       message.thumbsUp = thumbsUp;
-      trigger.textContent = thumbsUp ? '👍 1' : 'React';
+      trigger.textContent = '👍 1';
+      trigger.hidden = !thumbsUp;
       trigger.setAttribute('aria-label',thumbsUp ? 'Change thumbs-up reaction' : 'React to coach message');
-      thumb.textContent = thumbsUp ? 'Remove 👍' : '👍 Thumbs up';
+      thumb.setAttribute('aria-label',thumbsUp ? 'Remove thumbs-up reaction' : 'Thumbs up');
       thumb.setAttribute('aria-pressed',String(thumbsUp));
       options.hidden = true;
       trigger.setAttribute('aria-expanded','false');
@@ -239,6 +250,17 @@ function addMessageReaction(bubble,message) {
     finally { thumb.disabled = false; }
   };
 }
+function dismissReactions(event) {
+  if (event.type === 'keydown' && event.key !== 'Escape') return;
+  document.querySelectorAll('.reaction-options').forEach(options => {
+    if (event.type !== 'keydown' && options.parentElement.contains(event.target)) return;
+    if (options.contains(document.activeElement)) options.parentElement.focus();
+    options.hidden = true;
+    options.parentElement.querySelector('.reaction-trigger').setAttribute('aria-expanded','false');
+  });
+}
+document.addEventListener('pointerdown',dismissReactions);
+document.addEventListener('keydown',dismissReactions);
 async function acknowledgeMessages(user) {
   const latest = messageState.messages.filter(message => message.sender === 'staff').at(-1);
   if (!latest || latest.sentAt <= (messageState.thread.clientReadAt || 0)) return;
