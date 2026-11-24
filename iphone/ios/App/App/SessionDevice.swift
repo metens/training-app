@@ -5,6 +5,19 @@ import EventKitUI
 import UserNotifications
 
 class PerformanceViewController: CAPBridgeViewController {
+    private var loadingCover: UIView?
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        let cover = UIView(); cover.backgroundColor = UIColor(red:23/255,green:61/255,blue:43/255,alpha:1)
+        cover.frame = view.bounds; cover.autoresizingMask = [.flexibleWidth,.flexibleHeight]
+        let logo = UIImageView(image: UIImage(named:"LaunchLogo")); logo.contentMode = .scaleAspectFit
+        logo.translatesAutoresizingMaskIntoConstraints = false; cover.addSubview(logo)
+        NSLayoutConstraint.activate([logo.centerXAnchor.constraint(equalTo:cover.centerXAnchor),logo.centerYAnchor.constraint(equalTo:cover.centerYAnchor),logo.widthAnchor.constraint(equalToConstant:128),logo.heightAnchor.constraint(equalToConstant:125)])
+        view.addSubview(cover); loadingCover = cover
+        // Avoid trapping users behind a loading screen if account services are unavailable.
+        DispatchQueue.main.asyncAfter(deadline:.now()+15) { [weak self] in self?.finishLoading() }
+    }
+    func finishLoading() { loadingCover?.removeFromSuperview(); loadingCover=nil }
     override func capacitorDidLoad() { bridge?.registerPluginInstance(SessionDevice()) }
 }
 
@@ -13,6 +26,7 @@ public class SessionDevice: CAPPlugin, CAPBridgedPlugin, EKEventEditViewDelegate
     public let identifier = "SessionDevice"
     public let jsName = "SessionDevice"
     public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "ready", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "addToCalendar", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestPermission", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setOwner", returnType: CAPPluginReturnPromise),
@@ -46,6 +60,7 @@ public class SessionDevice: CAPPlugin, CAPBridgedPlugin, EKEventEditViewDelegate
         })
     }
     deinit { for observer in observers { NotificationCenter.default.removeObserver(observer) } }
+    @objc func ready(_ call: CAPPluginCall) { DispatchQueue.main.async { (self.bridge?.viewController as? PerformanceViewController)?.finishLoading(); call.resolve() } }
     @objc func remoteStatus(_ call: CAPPluginCall) { call.resolve(["enabled": remoteEnabled]) }
     @objc func registerRemote(_ call: CAPPluginCall) {
         DispatchQueue.main.async {

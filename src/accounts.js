@@ -409,5 +409,5 @@ async function renderCoach(current, user, staff) {
     finally { button.disabled = false; }
   };
 }
-onAuthStateChanged(auth, user => renderAccount(user).catch(() => report('Could not load the account. Reload to try again.')));
+onAuthStateChanged(auth, user => renderAccount(user).catch(() => report('Could not load the account. Reload to try again.')).finally(() => window.PPSessionDevice?.ready?.()));
 
