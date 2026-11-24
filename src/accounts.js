@@ -182,7 +182,10 @@ function addMessageReaction(bubble,message) {
   const trigger = document.createElement('button');
   trigger.type = 'button';
   trigger.className = 'reaction-trigger';
-  trigger.textContent = message.thumbsUp ? '👍 1' : 'React';
+  trigger.textContent = message.thumbsUp ? '👍 1' : '';
+  trigger.hidden = !message.thumbsUp;
+  bubble.tabIndex = 0;
+  bubble.setAttribute('aria-label', 'Coach message. Hold or press Enter to react.');
   trigger.setAttribute('aria-label',message.thumbsUp ? 'Change thumbs-up reaction' : 'React to coach message');
   trigger.setAttribute('aria-expanded','false');
   const options = document.createElement('div');
@@ -201,6 +204,12 @@ function addMessageReaction(bubble,message) {
     options.hidden = false;
     trigger.setAttribute('aria-expanded','true');
   };
+  bubble.addEventListener('keydown', event => {
+    if (event.target === bubble && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault(); reveal(); thumb.focus();
+    }
+    if (event.key === 'Escape') {options.hidden = true; trigger.setAttribute('aria-expanded','false');}
+  });
   trigger.onclick = () => {
     options.hidden = !options.hidden;
     trigger.setAttribute('aria-expanded',String(!options.hidden));
@@ -229,7 +238,8 @@ function addMessageReaction(bubble,message) {
         body:JSON.stringify({action:'react',id:message.id,thumbsUp})});
       if (messageUser !== user) return;
       message.thumbsUp = thumbsUp;
-      trigger.textContent = thumbsUp ? '👍 1' : 'React';
+      trigger.textContent = thumbsUp ? '👍 1' : '';
+      trigger.hidden = !thumbsUp;
       trigger.setAttribute('aria-label',thumbsUp ? 'Change thumbs-up reaction' : 'React to coach message');
       thumb.textContent = thumbsUp ? 'Remove 👍' : '👍 Thumbs up';
       thumb.setAttribute('aria-pressed',String(thumbsUp));

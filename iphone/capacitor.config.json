@@ -1,0 +1,6 @@
+{
+  "appId": "fit.pacificperformance.preview",
+  "appName": "Pacific Performance",
+  "webDir": "www",
+  "ios": {"backgroundColor": "#173d2b"}
+}

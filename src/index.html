@@ -80,6 +80,7 @@
 .message-bubble{padding:12px;margin:8px 0;border-radius:12px;background:#f0f3ed}
 .message-bubble.coach-reply{background:#e4f1df;-webkit-touch-callout:none}
 .reaction-trigger{background:white;color:#173d2b;font-size:12px;min-height:36px;padding:6px 10px;margin-top:8px}
+.reaction-options[hidden],.reaction-trigger[hidden]{display:none!important}
 .reaction-options{display:flex;align-items:center;gap:8px;margin-top:8px}
 .reaction-options button{min-height:44px;background:#173d2b;color:white}
 .message-bubble p{margin:6px 0;overflow-wrap:anywhere}
@@ -334,7 +335,7 @@ window.openCloudWorkout = (name, exercises) => {
   show(name, detail + '<button id="saveAssignedWorkout" class="full">Save to my workouts</button>');
   document.getElementById('saveAssignedWorkout').onclick = () => {
     routines.push({name, exercises});
-    put('routines', routines);
+    put(accountDataKey('routines'), routines);
     closeDialog();
     render();
   };
@@ -677,6 +678,10 @@ function renderStrengthRecords() {
 
 let historyAccount = null;
 
+function accountDataKey(name) {
+  return historyAccount ? name + '_' + historyAccount : name;
+}
+
 function historyKey() {
   return historyAccount ? 'history_' + historyAccount : 'history';
 }
@@ -684,6 +689,13 @@ function historyKey() {
 function selectWorkoutAccount(uid) {
   if (uid === historyAccount) return;
   historyAccount = uid;
+  routines = uid ? get(accountDataKey('routines'), []) : [];
+  lifts = uid ? get(accountDataKey('lifts'), []) : [];
+  draft = [];
+  document.getElementById('liftName').value = '';
+  document.getElementById('liftSelection').textContent = 'Choose a lift';
+  document.getElementById('weight').value = '';
+  document.getElementById('liftStatus').textContent = '';
   history = get(historyKey(), []).filter(item => item.name !== 'Full Body Foundations');
   closeDialog();
   render();
@@ -797,7 +809,7 @@ function saveLift(event) {
     return;
   }
   lifts.push({name, weight, loggedAt: Date.now()});
-  put('lifts', lifts);
+  put(accountDataKey('lifts'), lifts);
   input.value = '';
   render();
   document.getElementById('liftStatus').textContent = name + ' logged at ' + weight + ' lb.';
@@ -859,9 +871,9 @@ function drawBuilder(name) {
           '</select></label>' : '') + cardioInput(target.unit, target.amount,
           'oninput="draft[' + index + '].amount=this.valueAsNumber"')
       : '<label>Reps <input type="number" min="1" value="' + exercise.reps +
-        '" onchange="draft[' + index + '].reps=Number(this.value)"></label>' +
+        '" onchange="draft[' + index + '].reps=this.valueAsNumber"></label>' +
         '<label>lb <input type="number" min="0" value="' + exercise.weight +
-        '" onchange="draft[' + index + '].weight=Number(this.value)"></label>';
+        '" onchange="draft[' + index + '].weight=this.valueAsNumber"></label>';
     return '<div class="exercise"><div class="row"><b>' + safe(exercise.name) +
       '</b><button class="light" onclick="removeDraft(' + index + ')">✕</button></div>' +
       formPicture(exercise.name, exercise.name, true) +
@@ -915,18 +927,18 @@ function saveWorkout() {
   const invalid = draft.find(exercise => {
     if (!Number.isInteger(exercise.sets) || exercise.sets < 1 || exercise.sets > 20) return true;
     const target = cardioTarget(exercise);
-    return target ? !validCardio(target.unit, target.amount) : exercise.reps < 1 || exercise.weight < 0;
+    return target ? !validCardio(target.unit, target.amount) : !Number.isInteger(exercise.reps) || exercise.reps < 1 || exercise.reps > 10000 || !Number.isFinite(exercise.weight) || exercise.weight < 0 || exercise.weight > 10000;
   });
   if (invalid) return alert('Check the sets and measurement for ' + invalid.name + '.');
   routines.push({name, exercises: structuredClone(draft)});
-  put('routines', routines);
+  put(accountDataKey('routines'), routines);
   closeDialog();
   render();
 }
 function remove(index) {
   if (!confirm('Delete workout?')) return;
   routines.splice(index, 1);
-  put('routines', routines);
+  put(accountDataKey('routines'), routines);
   render();
 }
 let workoutTimer;
