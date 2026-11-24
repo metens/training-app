@@ -169,7 +169,7 @@ function messageBubble(message) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble' + (message.sender === 'staff' ? ' coach-reply' : '');
   const label = document.createElement('strong');
-  label.textContent = message.sender === 'staff' ? 'Coach' : 'You';
+  label.textContent = message.sender === 'staff' ? 'Coach Nathan' : 'You';
   const text = document.createElement('p');
   text.style.whiteSpace = 'pre-wrap';
   text.textContent = message.text;
@@ -183,7 +183,7 @@ function addMessageReaction(bubble,message) {
   const trigger = document.createElement('button');
   trigger.type = 'button';
   trigger.className = 'reaction-trigger';
-  trigger.textContent = message.thumbsUp ? '👍 1' : '';
+  trigger.textContent = message.thumbsUp ? '👍' : '';
   trigger.hidden = !message.thumbsUp;
   bubble.tabIndex = 0;
   bubble.setAttribute('aria-label', 'Coach message. Hold or press Enter to react.');
@@ -203,6 +203,7 @@ function addMessageReaction(bubble,message) {
   bubble.append(trigger,options);
   const reveal = () => {
     options.hidden = false;
+    requestAnimationFrame(() => { const list=bubble.closest('.message-thread'); if(list){const overflow=options.getBoundingClientRect().bottom-list.getBoundingClientRect().bottom;if(overflow>0)list.scrollTop+=overflow+8;} });
     trigger.setAttribute('aria-expanded','true');
   };
   bubble.addEventListener('keydown', event => {
@@ -239,7 +240,7 @@ function addMessageReaction(bubble,message) {
         body:JSON.stringify({action:'react',id:message.id,thumbsUp})});
       if (messageUser !== user) return;
       message.thumbsUp = thumbsUp;
-      trigger.textContent = thumbsUp ? '👍 1' : '';
+      trigger.textContent = thumbsUp ? '👍' : '';
       trigger.hidden = !thumbsUp;
       trigger.setAttribute('aria-label',thumbsUp ? 'Change thumbs-up reaction' : 'React to coach message');
       thumb.textContent = thumbsUp ? 'Remove 👍' : '👍 Thumbs up';
@@ -259,7 +260,7 @@ async function acknowledgeMessages(user) {
   messageState.thread.clientReadAt = latest.sentAt;
   renderMessageNotice();
 }
-async function refreshMessages() {
+async function refreshMessages(scrollToNewest = false) {
   const user = messageUser;
   if (!user || messageRequest) return;
   messageRequest = true;
@@ -270,7 +271,10 @@ async function refreshMessages() {
     renderMessageNotice();
     const list = document.getElementById('clientThread');
     if (list && document.getElementById('dialog').classList.contains('on')) {
+      const atBottom = scrollToNewest || list.scrollHeight-list.scrollTop-list.clientHeight < 70;
+      const oldTop = list.scrollTop;
       list.replaceChildren(...result.messages.map(messageBubble));
+      list.scrollTop = atBottom ? list.scrollHeight : oldTop;
       if (!result.messages.length) list.textContent = 'Send a message to your coach.';
       await acknowledgeMessages(user);
     }
@@ -296,12 +300,13 @@ function resetMessages(user) {
 async function openMessages() {
   const user = messageUser;
   if (!user) return;
-  window.show('Messages with your coach',
+  window.show('Coach Nathan',
     '<div id="clientThread" class="message-thread"></div><form id="clientMessageForm">' +
     '<label for="clientMessageText">Message</label><textarea id="clientMessageText" maxlength="4000" required rows="4"></textarea>' +
     '<button type="submit">Send message</button><p id="messageFeedback" class="muted" role="status"></p></form>');
   const list = document.getElementById('clientThread');
   list.replaceChildren(...messageState.messages.map(messageBubble));
+  list.scrollTop = list.scrollHeight;
   const form = document.getElementById('clientMessageForm');
   form.onsubmit = async event => {
     event.preventDefault();
@@ -320,11 +325,11 @@ async function openMessages() {
       input.value = '';
       draftMessage = null;
       feedback.textContent = 'Message sent.';
-      await refreshMessages();
+      await refreshMessages(true);
     } catch (error) { if (user === messageUser) feedback.textContent = error.message; }
     finally { button.disabled = false; }
   };
-  await refreshMessages();
+  await refreshMessages(true);
 }
 document.getElementById('openClientMessages').onclick = openMessages;
 messageNotice.onclick = openMessages;
