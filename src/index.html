@@ -100,6 +100,7 @@ html.modal-open{overflow:hidden;overscroll-behavior:none}
 body.modal-open{position:fixed;left:0;right:0;overflow:hidden}
 #dialog .message-thread{overscroll-behavior:contain}
 .appointment-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.strength-set,.set-head{display:grid;grid-template-columns:minmax(82px,1fr) minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:center}.set-head{padding:8px 6px 0;color:#718274;font-size:15px}.set-head span:not(:first-child){text-align:center}.strength-set label:first-child{margin:0;white-space:nowrap}.strength-set input.session-reps,.strength-set input.session-weight{width:100%;min-width:0;min-height:44px;text-align:center;padding:8px 4px}.strength-set{padding:6px;margin:4px 0}
 </style><div class="app"><header class="app-header"><div class="header-copy"><h1 id="title">Train with purpose.</h1><p>Strength · Running · Performance</p></div><img class="header-logo" src="/pacific-logo.png" alt="Pacific Performance Training" width="104" height="104"></header><button id="messageNotice" class="message-notice" type="button" hidden aria-live="polite"></button><main><section id="home" class="on"><h2 id="clientGreeting" hidden></h2><div class="card"><h3>Training overview</h3><div class="row"><div><strong id="total">0</strong><p class="muted">Sessions</p></div><div><strong id="routineCount">0</strong><p class="muted">Custom workouts</p></div><div><strong id="weeklyStreak">0 weeks</strong><p class="muted">Weekly streak</p></div></div><h4>Personal records</h4><div id="overviewPRs"></div></div><h2>Workout activity</h2><div id="workoutFeed"></div></section><section id="workouts"><div class="row"><h2>Workouts</h2><span class="pill">Training hub</span></div><div class="card"><h3>Workout Builder</h3><p class="muted">Build a routine with sets, reps and weights.</p><button class="full" onclick="builder()">+ Create workout</button></div><div id="clientAssignments"></div><p id="workoutSyncStatus" class="muted" role="status" hidden></p><div id="routines"></div><div id="assigned"></div></section><section id="progress"><h2>Progress</h2><div class="card"><h3>Training consistency</h3><strong id="progressTotal" style="font-size:36px">0</strong><p class="muted">Completed workouts</p><div class="bar"><div id="progressBar" style="width:0%"></div></div><p class="muted">Goal: 3 workouts</p><div id="trainingMonth"></div></div><div class="card"><h3>PR log</h3><p class="muted">Log a lift here or finish a workout to update your personal records.</p>
 <form id="manualLift" onsubmit="saveLift(event)">
   <span id="liftLabel">Lift</span>
@@ -976,8 +977,8 @@ function startWorkout(routine) {
         (set + 1) + '</label>';
       if (target) return '<div class="row set-row">' + checkbox +
         cardioInput(target.unit, target.amount, 'class="session-cardio"') + '</div>';
-      return '<div class="row set-row">' + checkbox + '<label>Reps <input class="session-reps" type="number" min="1" max="10000" step="1" required value="' +
-        (reps == null ? '' : safe(reps)) + '"></label><label for="' + id + '">Weight (lb)</label><input id="' + id +
+      return '<div class="set-row strength-set">' + checkbox + '<input aria-label="' + safe(name + ', set ' + (set + 1) + ' reps') + '" class="session-reps" type="number" min="1" max="10000" step="1" required value="' +
+        (reps == null ? '' : safe(reps)) + '"><input id="' + id +
         '" class="session-weight" type="number" min="0" step="any" max="10000" required aria-label="' + safe(name + ', set ' +
         (set + 1) + ' weight (lb)') + '" value="' + (weight == null ? '' : safe(weight)) + '"></div>';
     }).join('');
@@ -985,7 +986,7 @@ function startWorkout(routine) {
       '<p class="muted">' + (target && !validCardio(target.unit, target.amount)
         ? 'Enter a measurement for each set.' : (target ? safe(exerciseMeasurement(exercise)) :
           (reps == null ? 'Enter reps' : safe(reps) + ' reps')) + ' per set') + '</p>' +
-      (exercise.prescription ? '<p class="muted">' + safe(exercise.prescription) + '</p>' : '') + setRows + '</div>';
+      (exercise.prescription ? '<p class="muted">' + safe(exercise.prescription) + '</p>' : '') + (target ? '' : '<div class="set-head"><span>Set</span><span>Reps</span><span>Weight (lb)</span></div>') + setRows + '</div>';
   }).join('');
   show(routine.name, '<div class="workout-status"><div class="row"><span>Elapsed <strong id="workoutElapsed">0:00</strong></span>' +
     '<span id="workoutSetCount" class="muted"></span></div>' +
