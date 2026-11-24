@@ -13,6 +13,10 @@ class PerformanceViewController: CAPBridgeViewController {
         let logo = UIImageView(image: UIImage(named:"LaunchLogo")?.withRenderingMode(.alwaysTemplate)); logo.contentMode = .scaleAspectFit; logo.tintColor = .white
         logo.translatesAutoresizingMaskIntoConstraints = false; cover.addSubview(logo)
         NSLayoutConstraint.activate([logo.centerXAnchor.constraint(equalTo:cover.centerXAnchor),logo.centerYAnchor.constraint(equalTo:cover.centerYAnchor),logo.widthAnchor.constraint(equalToConstant:128),logo.heightAnchor.constraint(equalToConstant:125)])
+        let title = UILabel(); title.text = "Pacific Performance Training"; title.textColor = .white
+        title.font = .systemFont(ofSize: 20, weight: .semibold); title.textAlignment = .center
+        title.numberOfLines = 2; title.translatesAutoresizingMaskIntoConstraints = false; cover.addSubview(title)
+        NSLayoutConstraint.activate([title.topAnchor.constraint(equalTo:logo.bottomAnchor,constant:20),title.centerXAnchor.constraint(equalTo:cover.centerXAnchor),title.leadingAnchor.constraint(greaterThanOrEqualTo:cover.leadingAnchor,constant:24),title.trailingAnchor.constraint(lessThanOrEqualTo:cover.trailingAnchor,constant:-24)])
         view.addSubview(cover); loadingCover = cover
         // Avoid trapping users behind a loading screen if account services are unavailable.
         DispatchQueue.main.asyncAfter(deadline:.now()+15) { [weak self] in self?.finishLoading() }
