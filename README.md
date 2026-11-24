@@ -16,3 +16,8 @@ The former app preview Firebase project is untouched. Its preview accounts, purc
 ## Verification
 
 Run `node --test tests/*.test.mjs`. Tests exercise workout conversion and publication into the shared collection. Authenticated browser verification still requires real website accounts after the website deployment; previews proxy the production website API.
+
+
+## iPhone app
+
+The native Capacitor/Xcode project, app icon, build scripts, and browser regression tests are in [`iphone/`](iphone/README.md). It bundles the shared `src/` screens locally and uses the existing Pacific Performance accounts and backend. See its README for setup, physical-device signing, and validation limits.
