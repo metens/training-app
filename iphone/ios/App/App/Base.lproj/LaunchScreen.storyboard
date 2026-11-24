@@ -14,7 +14,7 @@
                 <viewController id="01J-lp-oVM" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="snD-IY-ifK">
                         <rect key="frame" x="0" y="0" width="375" height="667"/>
-                        <subviews><imageView contentMode="scaleAspectFit" image="LaunchLogo" translatesAutoresizingMaskIntoConstraints="NO" id="logo-view"><rect key="frame" x="123.5" y="271" width="128" height="125"/><constraints><constraint firstAttribute="width" constant="128" id="logo-w"/><constraint firstAttribute="height" constant="125" id="logo-h"/></constraints></imageView></subviews>
+                        <subviews><imageView contentMode="scaleAspectFit" image="LaunchLogo" translatesAutoresizingMaskIntoConstraints="NO" id="logo-view"><rect key="frame" x="123.5" y="271" width="128" height="125"/><color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/><constraints><constraint firstAttribute="width" constant="128" id="logo-w"/><constraint firstAttribute="height" constant="125" id="logo-h"/></constraints></imageView></subviews>
                         <color key="backgroundColor" red="0.090196" green="0.239216" blue="0.168627" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints><constraint firstItem="logo-view" firstAttribute="centerX" secondItem="snD-IY-ifK" secondAttribute="centerX" id="logo-x"/><constraint firstItem="logo-view" firstAttribute="centerY" secondItem="snD-IY-ifK" secondAttribute="centerY" id="logo-y"/></constraints>
                     </view>

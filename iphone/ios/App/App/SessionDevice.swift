@@ -10,7 +10,7 @@ class PerformanceViewController: CAPBridgeViewController {
         super.viewDidLoad()
         let cover = UIView(); cover.backgroundColor = UIColor(red:23/255,green:61/255,blue:43/255,alpha:1)
         cover.frame = view.bounds; cover.autoresizingMask = [.flexibleWidth,.flexibleHeight]
-        let logo = UIImageView(image: UIImage(named:"LaunchLogo")); logo.contentMode = .scaleAspectFit
+        let logo = UIImageView(image: UIImage(named:"LaunchLogo")?.withRenderingMode(.alwaysTemplate)); logo.contentMode = .scaleAspectFit; logo.tintColor = .white
         logo.translatesAutoresizingMaskIntoConstraints = false; cover.addSubview(logo)
         NSLayoutConstraint.activate([logo.centerXAnchor.constraint(equalTo:cover.centerXAnchor),logo.centerYAnchor.constraint(equalTo:cover.centerYAnchor),logo.widthAnchor.constraint(equalToConstant:128),logo.heightAnchor.constraint(equalToConstant:125)])
         view.addSubview(cover); loadingCover = cover
