@@ -1,4 +1,4 @@
-import {validSession,sessionHeading,calendarFile,sessionReminders} from './session-tools.mjs';
+import {gymLocation,gymMapsURL,sessionLocation,validSession,sessionHeading,calendarFile,sessionReminders} from './session-tools.mjs';
 let currentUser=null,request=null,appointments=[],generation=0,remoteToken=null;
 const device=()=>window.PPSessionDevice;
 const enabledKey=uid=>'pp_session_reminders_'+uid;
@@ -64,14 +64,14 @@ export function renderSessions(items){
   const cards=appointments.map(item=>{
     const card=document.createElement('div');card.className='card';
     const heading=document.createElement('h3');heading.textContent=sessionHeading(item);
-    const detail=document.createElement('p');detail.textContent=`${item.durationMinutes || Math.round((Date.parse(item.end)-Date.parse(item.start))/60000)} minutes · ${item.location||'See your coach'}`;
+    const detail=document.createElement('p');detail.textContent=`${item.durationMinutes || Math.round((Date.parse(item.end)-Date.parse(item.start))/60000)} minutes · ${sessionLocation(item)}`;
     const button=document.createElement('button');button.className='light';button.textContent='Add to calendar';
     const feedback=document.createElement('p');feedback.className='muted';feedback.setAttribute('role','status');
     button.onclick=async()=>{
       button.disabled=true;
       try{
         if(device()){
-          const result=await device().addToCalendar({title:'Pacific Performance training',start:item.start,end:item.end,location:item.location||'',notes:'Check Pacific Performance for schedule changes. Calendar copies do not update automatically.'});
+          const result=await device().addToCalendar({title:'Pacific Performance training',start:item.start,end:item.end,location:sessionLocation(item),notes:'Check Pacific Performance for schedule changes. Calendar copies do not update automatically.'});
           feedback.textContent=result.saved?'Added to your calendar. Update this calendar copy if your session changes.':'';
         }else{
           const url=URL.createObjectURL(new Blob([calendarFile(item)],{type:'text/calendar;charset=utf-8'}));
@@ -80,7 +80,7 @@ export function renderSessions(items){
         }
       }catch{feedback.textContent='The calendar could not be opened. Please try again.';}finally{button.disabled=false;}
     };
-    card.append(heading,detail,button,feedback);return card;
+    card.append(heading,detail);const map=document.createElement('a');map.href=sessionLocation(item)===gymLocation?gymMapsURL:'https://maps.apple.com/?q='+encodeURIComponent(sessionLocation(item));map.textContent='Open in Apple Maps';map.target='_blank';map.rel='noopener';map.style.cssText='display:block;margin:0 0 16px;color:inherit';card.append(map,button,feedback);return card;
   });
   container.replaceChildren(...cards);
   if(!cards.length)container.textContent='No upcoming sessions scheduled.';

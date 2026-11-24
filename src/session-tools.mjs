@@ -1,3 +1,6 @@
+export const gymLocation = 'Independent Iron, 7742 SW Nimbus Ave, Beaverton, OR 97008';
+export const gymMapsURL = 'https://maps.apple.com/?q=Independent+Iron&address=7742+SW+Nimbus+Ave,+Beaverton,+OR+97008';
+export const sessionLocation = item => !item.location || /^(beaverton|independent iron)$/i.test(item.location.trim()) ? gymLocation : item.location;
 export function validSession(item) {
   return item?.status === 'scheduled' && Number.isFinite(Date.parse(item.start)) &&
     Number.isFinite(Date.parse(item.end)) && Date.parse(item.end) > Date.parse(item.start);
@@ -22,7 +25,7 @@ export function calendarFile(item, now = new Date()) {
   if(!validSession(item)) throw Error('This appointment has no valid start and end time.');
   const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Pacific Performance//Training//EN','CALSCALE:GREGORIAN','BEGIN:VEVENT',
     'UID:'+escapeICS(item.id || item.start)+'@pacificperformance.fit','DTSTAMP:'+stamp(now),'DTSTART:'+stamp(item.start),'DTEND:'+stamp(item.end),
-    'SUMMARY:Pacific Performance training','LOCATION:'+escapeICS(item.location),'DESCRIPTION:Training session with Pacific Performance. Check the app for schedule changes.','END:VEVENT','END:VCALENDAR'];
+    'SUMMARY:Pacific Performance training','LOCATION:'+escapeICS(sessionLocation(item)),'DESCRIPTION:Training session with Pacific Performance. Check the app for schedule changes.','BEGIN:VALARM','TRIGGER:-PT1H','ACTION:DISPLAY','DESCRIPTION:Training session in one hour','END:VALARM','END:VEVENT','END:VCALENDAR'];
   // Fold by UTF-8 bytes so long names and non-ASCII locations stay valid.
   return lines.map(line=>{let out='',part='';for(const char of line){if(new TextEncoder().encode(part+char).length>74){out+=part+'\r\n';part=' ';}part+=char;}return out+part;}).join('\r\n')+'\r\n';
 }

@@ -131,6 +131,7 @@ public class SessionDevice: CAPPlugin, CAPBridgedPlugin, EKEventEditViewDelegate
                   let controller=self.bridge?.viewController, self.calendarCall == nil, controller.presentedViewController == nil else {call.reject("Calendar is unavailable or the session dates are invalid.");return}
             self.calendarCall=call
             let event=EKEvent(eventStore:self.eventStore);event.title=call.getString("title") ?? "Pacific Performance training"
+            event.addAlarm(EKAlarm(relativeOffset: -3600))
             event.startDate=start;event.endDate=end;event.location=call.getString("location");event.notes=call.getString("notes")
             let editor=EKEventEditViewController();editor.eventStore=self.eventStore;editor.event=event;editor.editViewDelegate=self
             editor.isModalInPresentation=true
