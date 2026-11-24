@@ -83,19 +83,23 @@
   for (const [alias, name] of Object.entries(aliases)) byName.set(alias, byName.get(normalize(name)));
 
   const characters = [
-    { skin:'#a55d4a', hair:'#292221', top:'#2d6954', pants:'#294a42', pony:true },
-    { skin:'#df9e77', hair:'#543628', top:'#4d7863', pants:'#314f49', pony:false },
-    { skin:'#83503d', hair:'#27232c', top:'#955e4f', pants:'#294943', pony:false },
-    { skin:'#c68661', hair:'#332129', top:'#8b6050', pants:'#2c4847', pony:true }
+    { skin:'#ad7656', hair:'#292b25', top:'#2d6954', pants:'#294a42', pony:false },
+    { skin:'#83503d', hair:'#27232c', top:'#78529b', pants:'#34334e', pony:true },
+    { skin:'#efbd97', hair:'#65412e', top:'#407ca5', pants:'#354c67', pony:false },
+    { skin:'#efbd97', hair:'#dfb140', top:'#536aa5', pants:'#354c67', pony:true }
   ];
-  const picks = new Map();
+  // Shuffle a balanced deck once: browsing or searching never changes a demo's person.
+  const deck = entries.map((_, index) => index % characters.length);
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  const picks = new Map(entries.map((entry, index) => [entry[1], deck[index]]));
   const cache = new Map();
   const duration = 2.25;
   const palette = {tools:'#889e94', shoes:'#203930'};
-  const getCharacter = id => {
-    if (!picks.has(id)) picks.set(id, Math.floor(Math.random() * characters.length));
-    return picks.get(id);
-  };
+  const getCharacter = id => picks.get(id);
+
 
   function svg(entry, characterIndex, animate) {
     const [, id, frames, equipment, prop] = entry;

@@ -922,7 +922,7 @@ function filterLibrary(q) {
   const query = q.trim().toLowerCase();
   const match = expandedExercises.find(query);
   document.getElementById('libraryItems').innerHTML = library.filter(e => e.toLowerCase().includes(query) || match?.name === e)
-    .map(e => '<div class="exercise form-entry">' + formPicture(e, e, Boolean(expandedExercises.find(e))) + '<div><b>' + safe(e) +
+    .map(e => '<div class="exercise form-entry">' + formPicture(e, e, true) + '<div><b>' + safe(e) +
       '</b><br><button class="light" aria-label="Add ' + safe(e) + '" onclick="addExercise(' + library.indexOf(e) +
       ')">+ Add</button></div></div>').join('');
 }
