@@ -1,3 +1,4 @@
+import {configureSessions,renderSessions,releaseSessions} from './session-ui.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js';
 import {getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut} from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
 import {getFirestore, collection, doc, getDoc, getDocs, runTransaction, serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
@@ -332,6 +333,7 @@ async function renderAccount(user) {
   const current = ++generation;
   clearTimeout(timer);
   activeAccount = user;
+  configureSessions(user,portal);
   resetMessages(user);
   plans = [];
   syncStatus.hidden = true;
@@ -339,7 +341,7 @@ async function renderAccount(user) {
   controls.replaceChildren(); assigned.replaceChildren(); account.replaceChildren(); sessions.replaceChildren();
   report(''); window.setAccountName?.(null);
   if (!user) { sessions.textContent = 'Sign in to see your upcoming sessions.'; return showSignIn(); }
-  action('Sign out', () => signOut(auth));
+  action('Sign out', async () => {await releaseSessions(user,portal);await signOut(auth);});
   const identity = document.createElement('p'); identity.textContent = user.email; account.prepend(identity);
   window.setAccountName?.(user.displayName || user.email.split('@')[0]);
   let staff = null;
@@ -348,6 +350,8 @@ async function renderAccount(user) {
   if (staff?.active === true && staff.role === 'admin') await renderCoach(current, user, staff);
   if (current !== generation) return;
   const refresh = async () => {
+    clearTimeout(timer);
+    if (current !== generation) return;
     syncWorkouts(user);
     const results = await Promise.allSettled([portal(user, 'workout-plans'), portal(user, 'sessions')]);
     if (current !== generation) return;
@@ -356,18 +360,15 @@ async function renderAccount(user) {
       renderAssignments();
     }
     if (results[1].status === 'fulfilled') {
-      const upcoming = results[1].value.appointments
-        .filter(item => item.status === 'scheduled')
-        .sort((a,b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
-      const dateTime = new Intl.DateTimeFormat('en-US', {dateStyle:'medium', timeStyle:'short'});
-      sessions.replaceChildren(...upcoming.filter(item => new Date(item.start).getTime() >= Date.now()).map(item =>
-        card(dateTime.format(new Date(item.start)), `${new Intl.DateTimeFormat('en-US', {timeStyle:'short'}).format(new Date(item.end))} end · ${item.durationMinutes} minutes · ${item.location || 'See your coach'}`)));
-      if (!sessions.children.length) sessions.textContent = 'No upcoming sessions scheduled.';
+      renderSessions(results[1].value.appointments);
     } else { sessions.textContent = staff ? 'Manage client sessions on the website Calendar.' : results[1].reason.message; }
     timer = setTimeout(refresh, 30000);
   };
+  window.refreshAppointments = refresh;
   await refresh();
 }
+window.addEventListener('focus',()=>window.refreshAppointments?.());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)window.refreshAppointments?.();});
 async function renderCoach(current, user, staff) {
   const clients = await getDocs(collection(db, 'clients'));
   if (current !== generation) return;
