@@ -62,9 +62,9 @@ export function renderSessions(items){
   appointments=items.filter(validSession).filter(item=>Date.parse(item.start)>=Date.now()).sort((a,b)=>Date.parse(a.start)-Date.parse(b.start));
   const container=document.getElementById('clientSessions');
   const cards=appointments.map(item=>{
-    const card=document.createElement('div');card.className='card';
-    const heading=document.createElement('h3');heading.textContent=sessionHeading(item);
-    const detail=document.createElement('p');detail.textContent=`${item.durationMinutes || Math.round((Date.parse(item.end)-Date.parse(item.start))/60000)} minutes · ${sessionLocation(item)}`;
+    const card=document.createElement('div');card.className='card appointment-card';
+    const heading=document.createElement('h3');heading.textContent=sessionHeading(item).replace(' at ', ' · ');heading.title=sessionHeading(item);
+    const detail=document.createElement('p');detail.textContent='50 minute session · '+sessionLocation(item);
     const button=document.createElement('button');button.className='light';button.textContent='Add to calendar';
     const feedback=document.createElement('p');feedback.className='muted';feedback.setAttribute('role','status');
     button.onclick=async()=>{
@@ -80,10 +80,10 @@ export function renderSessions(items){
         }
       }catch{feedback.textContent='The calendar could not be opened. Please try again.';}finally{button.disabled=false;}
     };
-    card.append(heading,detail);const map=document.createElement('a');map.href=sessionLocation(item)===gymLocation?gymMapsURL:'https://maps.apple.com/?q='+encodeURIComponent(sessionLocation(item));map.textContent='Open in Apple Maps';map.target='_blank';map.rel='noopener';map.style.cssText='display:block;margin:0 0 16px;color:inherit';card.append(map,button,feedback);return card;
+    card.append(heading,detail);const map=document.createElement('a');map.href=sessionLocation(item)===gymLocation?gymMapsURL:'https://maps.apple.com/?q='+encodeURIComponent(sessionLocation(item));map.textContent='Apple Maps';map.target='_blank';map.rel='noopener';map.className='light appointment-map';const actions=document.createElement('div');actions.className='appointment-actions';actions.append(map,button);card.append(actions,feedback);return card;
   });
   container.replaceChildren(...cards);
   if(!cards.length)container.textContent='No upcoming sessions scheduled.';
-  else{const note=document.createElement('p');note.className='muted';note.textContent='Times shown in '+Intl.DateTimeFormat().resolvedOptions().timeZone.replaceAll('_',' ')+'.';container.append(note);}
+
   syncReminders().catch(()=>status('Your appointments loaded, but reminders could not be updated. Reopen the app to retry.'));
 }
