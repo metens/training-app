@@ -463,8 +463,8 @@ function muscleMap(session) {
         return '<path d="' + shape + '" fill="' + color + '" stroke="#f3f7f0" stroke-width="1.2"><title>' +
           muscleGroups[muscle] + '</title></path>';
       }).join('');
-    return '<div><svg viewBox="0 0 120 289" aria-hidden="true">' + half +
-      '<g transform="translate(120 0) scale(-1 1)">' + half + '</g></svg><span>' + label + '</span></div>';
+    return '<div><svg viewBox="0 0 120 312" aria-hidden="true"><g transform="translate(6 0) scale(0.9 1.08)">' + half +
+      '<g transform="translate(120 0) scale(-1 1)">' + half + '</g></g></svg><span>' + label + '</span></div>';
   }
   const summary = [...scores].sort((a, b) => b[1] - a[1]).map(([muscle]) => muscleGroups[muscle]).join(', ');
   return '<figure class="muscle-map"><figcaption>Muscles worked</figcaption>' +
