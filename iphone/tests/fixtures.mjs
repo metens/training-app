@@ -25,3 +25,6 @@ export const CapacitorHttp={request:async request=>{
  const data=window.__data||{};
  return {status:200,data:action==='workout-plans'?{plans:data.plans||[]}:action==='sessions'?{appointments:data.appointments||[]}:action==='messages'?{messages:data.messages||[],thread:{}}:{workouts:[]}};
 }};
+
+export const Capacitor={isNativePlatform:()=>false};
+export const registerPlugin=()=>({});

@@ -1,3 +1,4 @@
+import {configureSessions,renderSessions,releaseSessions} from './session-ui.mjs';
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js';
 import {getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut} from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
 import {getFirestore, collection, doc, getDoc, getDocs, runTransaction, serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
@@ -70,14 +71,45 @@ const outboxKey = uid => 'pp_vercel_demo_workout_outbox_' + uid;
 const outbox = uid => JSON.parse(localStorage.getItem(outboxKey(uid)) || '{}');
 const persistOutbox = (uid, entries) => localStorage.setItem(outboxKey(uid), JSON.stringify(entries));
 
+function planLibrary() {
+  try { return JSON.parse(localStorage.getItem('pp_coach_library_'+activeAccount?.uid)||'{}'); } catch { return {}; }
+}
+function savePlanChoice(plan, state) {
+  if (!activeAccount) return;
+  const library=planLibrary(); library[plan.id]={state,plan};
+  localStorage.setItem('pp_coach_library_'+activeAccount.uid,JSON.stringify(library));
+  renderAssignments();
+}
+function renderArchivedPlans(library) {
+  let section=document.getElementById('archivedCoachWorkouts');
+  if(!section){section=document.createElement('div');section.id='archivedCoachWorkouts';section.className='card';document.getElementById('account').append(section);}
+  section.hidden=!activeAccount;section.replaceChildren();
+  const title=document.createElement('h3');title.textContent='Archived workouts';section.append(title);
+  const list=document.createElement('div');list.className='archived-workout-list';section.append(list);
+  const entries=Object.values(library).filter(entry=>entry.state==='archived');
+  if(!entries.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='Workouts you archive will appear here.';list.append(empty);}
+  for(const {plan} of entries){const item=document.createElement('div');item.className='card archived-workout';const name=document.createElement('h4');name.textContent=plan.name;item.append(name);const buttons=document.createElement('div');buttons.className='archived-workout-actions';
+    action('Restore',()=>savePlanChoice(plan,'active'),buttons);
+    action('Delete',()=>{if(confirm('Delete this archived workout from your library? Your completed workout records will stay.'))savePlanChoice(plan,'deleted');},buttons);
+    item.append(buttons);list.append(item);
+  }
+}
 function renderAssignments() {
-  assigned.replaceChildren(...plans.map(plan => {
+  const library=planLibrary();
+  renderArchivedPlans(library);
+  const available=new Map(plans.map(plan=>[plan.id,plan]));
+  for(const entry of Object.values(library))if(entry.state==='active'&&!available.has(entry.plan.id))available.set(entry.plan.id,entry.plan);
+  assigned.replaceChildren(...[...available.values()].filter(plan=>!['archived','deleted'].includes(library[plan.id]?.state)).map(plan => {
     const days = (plan.days || []).map((day, index) => ({day, index})).filter(({day}) => day?.exercises?.length);
     const completed = new Set(window.completedCoachDays(plan.id));
     const done = days.length > 0 && days.every(({index}) => completed.has(index));
     const item = card(plan.name, done ? 'Completed · Coach assigned' :
       plan.archived ? 'Previous coach workout' : 'Coach assigned');
     item.classList.toggle('coach-completed', done);
+    item.classList.add('coach-workout-card');
+    const menu=document.createElement('details');menu.className='workout-menu';
+    const more=document.createElement('summary');more.textContent='•••';more.setAttribute('aria-label','Options for '+plan.name);menu.append(more);
+    action('Archive',()=>savePlanChoice(plan,'archived'),menu);item.prepend(menu);
     if (plan.coachNotes) {
       const notes = document.createElement('p');
       notes.textContent = plan.coachNotes;
@@ -86,7 +118,7 @@ function renderAssignments() {
     for (const {day, index} of days) {
       const dayName = days.length === 1 ? 'workout' : day.name || 'Day ' + (index + 1);
       const buttons = document.createElement('div');
-      buttons.className = 'row';
+      buttons.className = 'row workout-day-actions';
       action((completed.has(index) ? 'Repeat ' : 'Start ') + dayName, () => window.startCoachDay(plan, index), buttons);
       action('View', () => window.viewCoachDay(plan, index), buttons);
       item.append(buttons);
@@ -168,21 +200,32 @@ function messageBubble(message) {
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble' + (message.sender === 'staff' ? ' coach-reply' : '');
   const label = document.createElement('strong');
-  label.textContent = message.sender === 'staff' ? 'Coach' : 'You';
+  label.textContent = message.sender === 'staff' ? 'Coach Nathan' : 'You';
   const text = document.createElement('p');
   text.style.whiteSpace = 'pre-wrap';
   text.textContent = message.text;
   const date = document.createElement('small');
-  date.textContent = new Date(message.sentAt).toLocaleString();
+  date.textContent = new Date(message.sentAt).toLocaleString() + (message.editedAt ? ' · Edited' : '');
   bubble.append(label,text,date);
   if (message.sender === 'staff') addMessageReaction(bubble,message);
+  if (message.authorUid === messageUser?.uid || (!message.authorUid && message.sender === 'client')) {
+    const edit=document.createElement('button');edit.type='button';edit.className='message-edit light';edit.textContent='Edit';
+    edit.onclick=()=>{
+      if(bubble.querySelector('textarea'))return;
+      const user=messageUser;const input=document.createElement('textarea');input.value=message.text;input.maxLength=4000;input.rows=3;
+      const save=document.createElement('button');save.textContent='Save';save.type='button';const cancel=document.createElement('button');cancel.textContent='Cancel';cancel.type='button';cancel.className='light';
+      const feedback=document.createElement('p');feedback.setAttribute('role','status');const editor=document.createElement('div');editor.className='message-editor';editor.append(input,save,cancel,feedback);bubble.append(editor);edit.hidden=true;input.focus();
+      cancel.onclick=()=>{editor.remove();edit.hidden=false;};
+      save.onclick=async()=>{const value=input.value.trim();if(!value){feedback.textContent='Enter a message.';return;}save.disabled=true;try{await portal(user,'messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'edit',id:message.id,text:value,originalText:message.text})});if(user!==messageUser)return;message.text=value;message.editedAt=Date.now();text.textContent=value;date.textContent=new Date(message.sentAt).toLocaleString()+' · Edited';editor.remove();edit.hidden=false;}catch(error){feedback.textContent=error.message||'Could not save your edit.';}finally{save.disabled=false;}};
+    };bubble.append(edit);
+  }
   return bubble;
 }
 function addMessageReaction(bubble,message) {
   const trigger = document.createElement('button');
   trigger.type = 'button';
   trigger.className = 'reaction-trigger';
-  trigger.textContent = message.thumbsUp ? '👍 1' : '';
+  trigger.textContent = message.thumbsUp ? '👍' : '';
   trigger.hidden = !message.thumbsUp;
   bubble.tabIndex = 0;
   bubble.setAttribute('aria-label', 'Coach message. Hold or press Enter to react.');
@@ -202,6 +245,7 @@ function addMessageReaction(bubble,message) {
   bubble.append(trigger,options);
   const reveal = () => {
     options.hidden = false;
+    requestAnimationFrame(() => { const list=bubble.closest('.message-thread'); if(list){const overflow=options.getBoundingClientRect().bottom-list.getBoundingClientRect().bottom;if(overflow>0)list.scrollTop+=overflow+8;} });
     trigger.setAttribute('aria-expanded','true');
   };
   bubble.addEventListener('keydown', event => {
@@ -238,7 +282,7 @@ function addMessageReaction(bubble,message) {
         body:JSON.stringify({action:'react',id:message.id,thumbsUp})});
       if (messageUser !== user) return;
       message.thumbsUp = thumbsUp;
-      trigger.textContent = thumbsUp ? '👍 1' : '';
+      trigger.textContent = thumbsUp ? '👍' : '';
       trigger.hidden = !thumbsUp;
       trigger.setAttribute('aria-label',thumbsUp ? 'Change thumbs-up reaction' : 'React to coach message');
       thumb.textContent = thumbsUp ? 'Remove 👍' : '👍 Thumbs up';
@@ -258,7 +302,7 @@ async function acknowledgeMessages(user) {
   messageState.thread.clientReadAt = latest.sentAt;
   renderMessageNotice();
 }
-async function refreshMessages() {
+async function refreshMessages(scrollToNewest = false) {
   const user = messageUser;
   if (!user || messageRequest) return;
   messageRequest = true;
@@ -269,7 +313,11 @@ async function refreshMessages() {
     renderMessageNotice();
     const list = document.getElementById('clientThread');
     if (list && document.getElementById('dialog').classList.contains('on')) {
+      const atBottom = scrollToNewest || list.scrollHeight-list.scrollTop-list.clientHeight < 70;
+      const oldTop = list.scrollTop;
+      if(list.querySelector('.message-editor'))return;
       list.replaceChildren(...result.messages.map(messageBubble));
+      list.scrollTop = atBottom ? list.scrollHeight : oldTop;
       if (!result.messages.length) list.textContent = 'Send a message to your coach.';
       await acknowledgeMessages(user);
     }
@@ -295,12 +343,13 @@ function resetMessages(user) {
 async function openMessages() {
   const user = messageUser;
   if (!user) return;
-  window.show('Messages with your coach',
+  window.show('Coach Nathan',
     '<div id="clientThread" class="message-thread"></div><form id="clientMessageForm">' +
     '<label for="clientMessageText">Message</label><textarea id="clientMessageText" maxlength="4000" required rows="4"></textarea>' +
     '<button type="submit">Send message</button><p id="messageFeedback" class="muted" role="status"></p></form>');
   const list = document.getElementById('clientThread');
   list.replaceChildren(...messageState.messages.map(messageBubble));
+  list.scrollTop = list.scrollHeight;
   const form = document.getElementById('clientMessageForm');
   form.onsubmit = async event => {
     event.preventDefault();
@@ -319,11 +368,11 @@ async function openMessages() {
       input.value = '';
       draftMessage = null;
       feedback.textContent = 'Message sent.';
-      await refreshMessages();
+      await refreshMessages(true);
     } catch (error) { if (user === messageUser) feedback.textContent = error.message; }
     finally { button.disabled = false; }
   };
-  await refreshMessages();
+  await refreshMessages(true);
 }
 document.getElementById('openClientMessages').onclick = openMessages;
 messageNotice.onclick = openMessages;
@@ -332,14 +381,16 @@ async function renderAccount(user) {
   const current = ++generation;
   clearTimeout(timer);
   activeAccount = user;
+  configureSessions(user,portal);
   resetMessages(user);
   plans = [];
+  renderAssignments();
   syncStatus.hidden = true;
   window.selectWorkoutAccount(user?.uid || null);
   controls.replaceChildren(); assigned.replaceChildren(); account.replaceChildren(); sessions.replaceChildren();
   report(''); window.setAccountName?.(null);
   if (!user) { sessions.textContent = 'Sign in to see your upcoming sessions.'; return showSignIn(); }
-  action('Sign out', () => signOut(auth));
+  action('Sign out', async () => {await releaseSessions(user,portal);await signOut(auth);});
   const identity = document.createElement('p'); identity.textContent = user.email; account.prepend(identity);
   window.setAccountName?.(user.displayName || user.email.split('@')[0]);
   let staff = null;
@@ -348,6 +399,8 @@ async function renderAccount(user) {
   if (staff?.active === true && staff.role === 'admin') await renderCoach(current, user, staff);
   if (current !== generation) return;
   const refresh = async () => {
+    clearTimeout(timer);
+    if (current !== generation) return;
     syncWorkouts(user);
     const results = await Promise.allSettled([portal(user, 'workout-plans'), portal(user, 'sessions')]);
     if (current !== generation) return;
@@ -356,18 +409,15 @@ async function renderAccount(user) {
       renderAssignments();
     }
     if (results[1].status === 'fulfilled') {
-      const upcoming = results[1].value.appointments
-        .filter(item => item.status === 'scheduled')
-        .sort((a,b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
-      const dateTime = new Intl.DateTimeFormat('en-US', {dateStyle:'medium', timeStyle:'short'});
-      sessions.replaceChildren(...upcoming.filter(item => new Date(item.start).getTime() >= Date.now()).map(item =>
-        card(dateTime.format(new Date(item.start)), `${new Intl.DateTimeFormat('en-US', {timeStyle:'short'}).format(new Date(item.end))} end · ${item.durationMinutes} minutes · ${item.location || 'See your coach'}`)));
-      if (!sessions.children.length) sessions.textContent = 'No upcoming sessions scheduled.';
+      renderSessions(results[1].value.appointments);
     } else { sessions.textContent = staff ? 'Manage client sessions on the website Calendar.' : results[1].reason.message; }
     timer = setTimeout(refresh, 30000);
   };
+  window.refreshAppointments = refresh;
   await refresh();
 }
+window.addEventListener('focus',()=>window.refreshAppointments?.());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)window.refreshAppointments?.();});
 async function renderCoach(current, user, staff) {
   const clients = await getDocs(collection(db, 'clients'));
   if (current !== generation) return;
@@ -408,5 +458,5 @@ async function renderCoach(current, user, staff) {
     finally { button.disabled = false; }
   };
 }
-onAuthStateChanged(auth, user => renderAccount(user).catch(() => report('Could not load the account. Reload to try again.')));
+onAuthStateChanged(auth, user => renderAccount(user).catch(() => report('Could not load the account. Reload to try again.')).finally(() => window.PPSessionDevice?.ready?.()));
 

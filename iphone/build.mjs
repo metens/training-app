@@ -25,7 +25,7 @@ let accounts = await readFile('www/accounts.js','utf8');
 accounts = accounts.replace(/https:\/\/www.gstatic.com\/firebasejs\/12.18.0\/firebase-(app|auth|firestore).js/g,(_,name)=>'firebase/'+name);
 // Email/password auth needs persistence but no browser popup/redirect resolver.
 accounts = accounts.replace('getAuth, signInWithEmailAndPassword', 'initializeAuth, browserLocalPersistence, signInWithEmailAndPassword').replace('const auth = getAuth(app);', 'const auth = initializeAuth(app, {persistence: browserLocalPersistence});');
-accounts = "import {CapacitorHttp} from '@capacitor/core';\n" + accounts;
+accounts = "import {Capacitor, CapacitorHttp, registerPlugin} from '@capacitor/core';\nif (Capacitor.isNativePlatform()) { window.PPSessionDevice = registerPlugin('SessionDevice');\nwindow.PPSessionDevice.addListener('sessionNotification', () => { if (!document.documentElement.classList.contains('signed-out')) { window.closeDialog(); window.tab('account'); window.refreshAppointments?.(); } }); }\n" + accounts;
 const start = accounts.indexOf('  const response = await fetch(`/api/portal');
 const end = accounts.indexOf('  return result;',start);
 if(start<0||end<0) throw Error('Portal implementation changed');

@@ -4,10 +4,12 @@
 <dict>
   <key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
-	<key>CFBundleDevelopmentRegion</key>
+	<key>PPRemoteNotificationsEnabled</key>
+<false/>
+<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Pacific Performance</string>
+        <string>PPTraining</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
