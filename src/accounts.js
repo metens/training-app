@@ -205,9 +205,20 @@ function messageBubble(message) {
   text.style.whiteSpace = 'pre-wrap';
   text.textContent = message.text;
   const date = document.createElement('small');
-  date.textContent = new Date(message.sentAt).toLocaleString();
+  date.textContent = new Date(message.sentAt).toLocaleString() + (message.editedAt ? ' · Edited' : '');
   bubble.append(label,text,date);
   if (message.sender === 'staff') addMessageReaction(bubble,message);
+  if (message.authorUid === messageUser?.uid || (!message.authorUid && message.sender === 'client')) {
+    const edit=document.createElement('button');edit.type='button';edit.className='message-edit light';edit.textContent='Edit';
+    edit.onclick=()=>{
+      if(bubble.querySelector('textarea'))return;
+      const user=messageUser;const input=document.createElement('textarea');input.value=message.text;input.maxLength=4000;input.rows=3;
+      const save=document.createElement('button');save.textContent='Save';save.type='button';const cancel=document.createElement('button');cancel.textContent='Cancel';cancel.type='button';cancel.className='light';
+      const feedback=document.createElement('p');feedback.setAttribute('role','status');const editor=document.createElement('div');editor.className='message-editor';editor.append(input,save,cancel,feedback);bubble.append(editor);edit.hidden=true;input.focus();
+      cancel.onclick=()=>{editor.remove();edit.hidden=false;};
+      save.onclick=async()=>{const value=input.value.trim();if(!value){feedback.textContent='Enter a message.';return;}save.disabled=true;try{await portal(user,'messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'edit',id:message.id,text:value,originalText:message.text})});if(user!==messageUser)return;message.text=value;message.editedAt=Date.now();text.textContent=value;date.textContent=new Date(message.sentAt).toLocaleString()+' · Edited';editor.remove();edit.hidden=false;}catch(error){feedback.textContent=error.message||'Could not save your edit.';}finally{save.disabled=false;}};
+    };bubble.append(edit);
+  }
   return bubble;
 }
 function addMessageReaction(bubble,message) {
@@ -304,6 +315,7 @@ async function refreshMessages(scrollToNewest = false) {
     if (list && document.getElementById('dialog').classList.contains('on')) {
       const atBottom = scrollToNewest || list.scrollHeight-list.scrollTop-list.clientHeight < 70;
       const oldTop = list.scrollTop;
+      if(list.querySelector('.message-editor'))return;
       list.replaceChildren(...result.messages.map(messageBubble));
       list.scrollTop = atBottom ? list.scrollHeight : oldTop;
       if (!result.messages.length) list.textContent = 'Send a message to your coach.';
