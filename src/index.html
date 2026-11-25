@@ -112,6 +112,15 @@ nav button{display:flex;align-items:center;justify-content:center;gap:5px;white-
 .archived-workout h4{font-size:16px;line-height:1.3;margin:0 0 8px;overflow-wrap:anywhere}
 .archived-workout-actions{display:flex;gap:8px}
 .archived-workout-actions button{flex:1;min-height:44px;padding:8px 12px;font-size:15px}
+
+.builder-strength-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.builder-strength-fields label{min-width:0;font-size:15px}
+.builder-strength-fields input{display:block;width:100%;min-width:0;min-height:44px;margin-top:5px}
+.live-set,.live-set-head{grid-template-columns:minmax(70px,1fr) minmax(0,1fr) minmax(0,1fr) 32px;gap:6px}
+.live-set-remove{padding:4px;min-width:32px;min-height:44px}
+.live-exercise-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.live-exercise-heading button{font-size:13px;padding:8px;min-height:44px}
+.live-library{border-top:1px solid #cbdac5;margin-top:12px;padding-top:12px}
 </style><div class="app"><header class="app-header"><div class="header-copy"><h1 id="title">Train with purpose.</h1><p>Strength · Running · Performance</p></div><img class="header-logo" src="/pacific-logo.png" alt="Pacific Performance Training" width="104" height="104"></header><button id="messageNotice" class="message-notice" type="button" hidden aria-live="polite"></button><main><section id="home" class="on"><h2 id="clientGreeting" hidden></h2><div class="card"><h3>Training overview</h3><div class="row"><div><strong id="total">0</strong><p class="muted">Sessions</p></div><div><strong id="routineCount">0</strong><p class="muted">Custom workouts</p></div><div><strong id="weeklyStreak">0 weeks</strong><p class="muted">Weekly streak</p></div></div><h4>Personal records</h4><div id="overviewPRs"></div></div><h2>Workout activity</h2><div id="workoutFeed"></div></section><section id="workouts"><div class="row"><h2>Workouts</h2><span class="pill">Training hub</span></div><div class="card"><h3>Workout Builder</h3><p class="muted">Build a routine with sets, reps and weights.</p><button class="full" onclick="builder()">+ Create workout</button></div><div id="clientAssignments"></div><p id="workoutSyncStatus" class="muted" role="status" hidden></p><div id="routines"></div><div id="assigned"></div></section><section id="progress"><h2>Progress</h2><div class="card"><h3>Training consistency</h3><strong id="progressTotal" style="font-size:36px">0</strong><p class="muted">Completed workouts</p><div class="bar"><div id="progressBar" style="width:0%"></div></div><p class="muted">Goal: 3 workouts</p><div id="trainingMonth"></div></div><div class="card"><h3>PR log</h3><p class="muted">Log a lift here or finish a workout to update your personal records.</p>
 <form id="manualLift" onsubmit="saveLift(event)">
   <span id="liftLabel">Lift</span>
@@ -883,7 +892,7 @@ function drawBuilder(name) {
     return '<div class="exercise"><div class="row"><b>' + safe(exercise.name) +
       '</b><button class="light" onclick="removeDraft(' + index + ')">✕</button></div>' +
       formPicture(exercise.name, exercise.name, true) +
-      '<div class="' + (target ? 'cardio-fields' : 'row') + '" style="margin-top:9px">' +
+      '<div class="' + (target ? 'cardio-fields' : 'builder-strength-fields') + '" style="margin-top:9px">' +
       '<label>Sets <input type="number" min="1" max="20" value="' + exercise.sets +
       '" onchange="draft[' + index + '].sets=Number(this.value)"></label>' + fields + '</div></div>';
   }).join('');
@@ -956,32 +965,36 @@ function start(i) {
   startWorkout(routines[i]);
 }
 
-function startWorkout(routine) {
-  activeWorkout = routine;
-  const exercises = routine.exercises.map((exercise, index) => {
+function liveExerciseHTML(exercise, index) {
     const {name, sets, reps, weight} = exercise;
     const target = cardioTarget(exercise);
     const setRows = Array.from({length: Math.min(sets, 20)}, (_, set) => {
       const id = 'set-weight-' + index + '-' + set;
+      const removeSetButton = '<button type="button" class="light live-set-remove" aria-label="Remove set" onclick="removeLiveSet(this)">−</button>';
       const checkbox = '<label><input type="checkbox" class="setCheck" onchange="updateWorkoutProgress(this)"> Set ' +
         (set + 1) + '</label>';
       if (target) return '<div class="row set-row">' + checkbox +
-        cardioInput(target.unit, target.amount, 'class="session-cardio"') + '</div>';
-      return '<div class="set-row strength-set">' + checkbox + '<input aria-label="' + safe(name + ', set ' + (set + 1) + ' reps') + '" class="session-reps" type="number" min="1" max="10000" step="1" required value="' +
+        cardioInput(target.unit, target.amount, 'class="session-cardio"') + removeSetButton + '</div>';
+      return '<div class="set-row strength-set live-set">' + checkbox + '<input aria-label="' + safe(name + ', set ' + (set + 1) + ' reps') + '" class="session-reps" type="number" min="1" max="10000" step="1" required value="' +
         (reps == null ? '' : safe(reps)) + '"><input id="' + id +
         '" class="session-weight" type="number" min="0" step="any" max="10000" required aria-label="' + safe(name + ', set ' +
-        (set + 1) + ' weight (lb)') + '" value="' + (weight == null ? '' : safe(weight)) + '"></div>';
+        (set + 1) + ' weight (lb)') + '" value="' + (weight == null ? '' : safe(weight)) + '">' + removeSetButton + '</div>';
     }).join('');
-    return '<div class="exercise session-exercise"><b>' + safe(name) + '</b>' + formPicture(name, name, true) +
+    return '<div class="exercise session-exercise" data-exercise-index="' + index + '"><div class="live-exercise-heading"><b>' + safe(name) + '</b><button class="light" onclick="removeLiveExercise(this)">Remove exercise</button></div>' + formPicture(name, name, true) +
       '<p class="muted">' + (target && !validCardio(target.unit, target.amount)
         ? 'Enter a measurement for each set.' : (target ? safe(exerciseMeasurement(exercise)) :
           (reps == null ? 'Enter reps' : safe(reps) + ' reps')) + ' per set') + '</p>' +
-      (exercise.prescription ? '<p class="muted">' + safe(exercise.prescription) + '</p>' : '') + (target ? '' : '<div class="set-head"><span>Set</span><span>Reps</span><span>Weight (lb)</span></div>') + setRows + '</div>';
-  }).join('');
+      (exercise.prescription ? '<p class="muted">' + safe(exercise.prescription) + '</p>' : '') + (target ? '' : '<div class="set-head live-set-head"><span>Set</span><span>Reps</span><span>Weight (lb)</span><span></span></div>') + '<div class="live-sets">' + setRows + '</div><button class="light" onclick="addLiveSet(this)">+ Add set</button></div>';
+}
+
+function startWorkout(routine) {
+  activeWorkout = structuredClone(routine);
+  activeWorkout.removedAssignedWork = false;
+  const exercises = routine.exercises.map(liveExerciseHTML).join('');
   show(routine.name, '<div class="workout-status"><div class="row"><span>Elapsed <strong id="workoutElapsed">0:00</strong></span>' +
     '<span id="workoutSetCount" class="muted"></span></div>' +
     '<progress id="workoutProgress" aria-label="Workout sets completed" value="0"></progress></div>' +
-    exercises + '<button class="full" style="margin-top:14px" onclick="finishCustom()">Finish workout</button>');
+    '<div id="liveExercises">' + exercises + '</div><button class="light full" style="margin-top:12px" onclick="pickLiveExercise()">+ Add exercise</button><div id="liveLibrary" class="live-library" hidden></div><button class="full" style="margin-top:14px" onclick="finishCustom()">Finish workout</button>');
   workoutStartedAt = performance.now();
   const timer = document.getElementById('workoutElapsed');
   clearInterval(workoutTimer);
@@ -989,6 +1002,63 @@ function startWorkout(routine) {
     timer.textContent = formatElapsed(Math.floor((performance.now() - workoutStartedAt) / 1000));
   }, 250);
   updateWorkoutProgress();
+}
+
+function renumberLiveSets(exercise) {
+  const name = activeWorkout.exercises[Number(exercise.dataset.exerciseIndex)].name;
+  exercise.querySelectorAll('.set-row').forEach((row, i) => {
+    const label = row.querySelector('label');
+    label.lastChild.textContent = ' Set ' + (i + 1);
+    row.querySelector('.session-reps')?.setAttribute('aria-label', name + ', set ' + (i + 1) + ' reps');
+    row.querySelector('.session-weight')?.setAttribute('aria-label', name + ', set ' + (i + 1) + ' weight (lb)');
+  });
+  updateWorkoutProgress();
+}
+function addLiveSet(button) {
+  const exercise = button.closest('.session-exercise');
+  const list = exercise.querySelector('.live-sets');
+  if(list.children.length >= 20) return alert('You can log up to 20 sets per exercise.');
+  const last = list.lastElementChild;
+  const row = last ? last.cloneNode(true) : (() => {
+    const holder = document.createElement('div');
+    holder.innerHTML = liveExerciseHTML(activeWorkout.exercises[Number(exercise.dataset.exerciseIndex)],Number(exercise.dataset.exerciseIndex));
+    return holder.querySelector('.set-row');
+  })();
+  row.querySelector('.setCheck').checked = false;
+  row.querySelectorAll('[id]').forEach(input=>input.removeAttribute('id'));
+  row.dataset.added = 'true';
+  list.append(row);renumberLiveSets(exercise);
+}
+function removeLiveSet(button) {
+  const row = button.closest('.set-row');
+  if(row.querySelector('.setCheck').checked && !confirm('Remove this completed set from this workout?')) return;
+  const exercise = row.closest('.session-exercise');
+  if(!row.dataset.added && !exercise.dataset.added) activeWorkout.removedAssignedWork = true;
+  row.remove();renumberLiveSets(exercise);
+}
+function removeLiveExercise(button) {
+  const exercise = button.closest('.session-exercise');
+  if(exercise.querySelector('.setCheck:checked') && !confirm('Remove this exercise and its completed sets from this workout?')) return;
+  if(!exercise.dataset.added) activeWorkout.removedAssignedWork = true;
+  exercise.remove();updateWorkoutProgress();
+}
+function pickLiveExercise() {
+  const panel=document.getElementById('liveLibrary');panel.hidden=false;
+  panel.innerHTML='<div class="row"><h3>Add exercise</h3><button class="light" onclick="this.closest(\'.live-library\').hidden=true">Close</button></div><input id="liveSearch" placeholder="Search exercises" style="width:100%" oninput="filterLiveLibrary(this.value)"><div id="liveLibraryItems"></div>';
+  filterLiveLibrary('');panel.scrollIntoView({block:'start'});
+}
+function filterLiveLibrary(query) {
+  const match=expandedExercises.find(query.trim().toLowerCase());
+  document.getElementById('liveLibraryItems').innerHTML=library.filter(name=>name.toLowerCase().includes(query.trim().toLowerCase())||match?.name===name).map(name=>'<div class="exercise form-entry">'+formPicture(name,name,true)+'<div><b>'+safe(name)+'</b><br><button class="light" aria-label="Add '+safe(name)+'" onclick="addLiveExercise('+library.indexOf(name)+')">+ Add</button></div></div>').join('');
+}
+function addLiveExercise(index) {
+  const name=library[index],unit=cardioUnits[name]?.[0];
+  if(!name||!activeWorkout)return;
+  const exercise=unit?{name,sets:3,unit,amount:null}:{name,sets:3,reps:10,weight:0};
+  const position=activeWorkout.exercises.push(exercise)-1;
+  const list=document.getElementById('liveExercises');list.insertAdjacentHTML('beforeend',liveExerciseHTML(exercise,position));
+  list.lastElementChild.dataset.added='true';
+  document.getElementById('liveLibrary').hidden=true;updateWorkoutProgress();list.lastElementChild.scrollIntoView({block:'start'});
 }
 
 function updateWorkoutProgress(changed) {
@@ -1009,9 +1079,9 @@ function finishCustom() {
   const completedSets = rows.flatMap((row, index) =>
     [...row.querySelectorAll('.set-row')].flatMap((set, setIndex) =>
       set.querySelector('.setCheck').checked ? [{
-        name: routine.exercises[index].name,
+        name: routine.exercises[Number(row.dataset.exerciseIndex)].name,
         number: setIndex + 1,
-        target: cardioTarget(routine.exercises[index]),
+        target: cardioTarget(routine.exercises[Number(row.dataset.exerciseIndex)]),
         amount: set.querySelector('.session-cardio'),
         weight: set.querySelector('.session-weight'),
         reps: set.querySelector('.session-reps')
@@ -1023,8 +1093,8 @@ function finishCustom() {
     !set.weight.validity.valid || !set.reps.validity.valid)) {
     return alert('Enter valid measurements for completed sets.');
   }
-  const allSets = !document.querySelector('#dialogBody .setCheck:not(:checked)');
-  if (!allSets &&
+  const allSets = !routine.removedAssignedWork && !document.querySelector('#dialogBody .setCheck:not(:checked)');
+  if (document.querySelector('#dialogBody .setCheck:not(:checked)') &&
       !confirm('Some sets are incomplete. Finish anyway?')) return;
 
   const bests = strengthBests();

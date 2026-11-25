@@ -39,3 +39,19 @@ test('coach workouts can be archived restored and deleted from the personal libr
  await archive();await page.locator('#archivedCoachWorkouts').getByRole('button',{name:'Restore',exact:true}).click();await page.locator('#nav-workouts').click();await expect(page.locator('#clientAssignments')).toContainText('Archive Test');
  await archive();page.once('dialog',dialog=>dialog.accept());await page.locator('#archivedCoachWorkouts').getByRole('button',{name:'Delete',exact:true}).click();await expect(page.locator('#archivedCoachWorkouts')).not.toContainText('Archive Test');await page.evaluate(()=>window.renderCoachAssignments());await page.locator('#nav-workouts').click();await expect(page.locator('#clientAssignments')).not.toContainText('Archive Test');
 });
+test('live workout edits preserve entered sets and saved template',async({page})=>{
+ await open(page);await login(page);await create(page);
+ const y=await page.locator('.builder-strength-fields input').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().y));expect(new Set(y).size).toBe(1);
+ await page.getByRole('button',{name:'Save workout',exact:true}).click();await page.locator('#routines').getByRole('button',{name:'Start workout'}).click();
+ await page.locator('.session-weight').first().fill('125');await page.locator('.setCheck').first().check();
+ await page.getByRole('button',{name:'+ Add set',exact:true}).click();await expect(page.locator('.setCheck')).toHaveCount(4);
+ await expect(page.locator('.session-weight').first()).toHaveValue('125');await expect(page.locator('.setCheck').first()).toBeChecked();
+ await page.getByRole('button',{name:'Remove set',exact:true}).nth(2).click();await expect(page.locator('.setCheck')).toHaveCount(3);
+ const started=await page.evaluate(()=>workoutStartedAt);
+ await page.getByRole('button',{name:'+ Add exercise',exact:true}).click();await page.getByRole('button',{name:'Add Deadlift',exact:true}).click();expect(await page.evaluate(()=>workoutStartedAt)).toBe(started);
+ await page.locator('.session-exercise').nth(1).getByRole('button',{name:'Remove exercise',exact:true}).click();
+ await page.getByRole('button',{name:'+ Add exercise',exact:true}).click();await page.getByRole('button',{name:'Add Bench Press',exact:true}).click();
+ await page.locator('.session-exercise').nth(1).locator('.session-weight').first().fill('75');await page.locator('.session-exercise').nth(1).locator('.setCheck').first().check();
+ page.on('dialog',d=>d.accept());await page.getByRole('button',{name:'Finish workout',exact:true}).click();
+ const saved=await page.evaluate(()=>({session:history.at(-1),template:routines[0]}));expect(saved.session.sets.map(s=>s.name)).toEqual(['Barbell Squat','Bench Press']);expect(saved.session.sets[0].weight).toBe(125);expect(saved.template.exercises).toHaveLength(1);expect(saved.template.exercises[0].sets).toBe(3);
+});
