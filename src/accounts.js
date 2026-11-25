@@ -82,13 +82,13 @@ function savePlanChoice(plan, state) {
 }
 function renderArchivedPlans(library) {
   let section=document.getElementById('archivedCoachWorkouts');
-  if(!section){section=document.createElement('div');section.id='archivedCoachWorkouts';section.className='card';document.getElementById('clientMessageCard').after(section);}
+  if(!section){section=document.createElement('div');section.id='archivedCoachWorkouts';section.className='card';document.getElementById('account').append(section);}
   section.hidden=!activeAccount;section.replaceChildren();
   const title=document.createElement('h3');title.textContent='Archived workouts';section.append(title);
   const list=document.createElement('div');list.className='archived-workout-list';section.append(list);
   const entries=Object.values(library).filter(entry=>entry.state==='archived');
   if(!entries.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='Workouts you archive will appear here.';list.append(empty);}
-  for(const {plan} of entries){const item=card(plan.name,'Coach workout');const buttons=document.createElement('div');buttons.className='row';
+  for(const {plan} of entries){const item=document.createElement('div');item.className='card archived-workout';const name=document.createElement('h4');name.textContent=plan.name;item.append(name);const buttons=document.createElement('div');buttons.className='archived-workout-actions';
     action('Restore',()=>savePlanChoice(plan,'active'),buttons);
     action('Delete',()=>{if(confirm('Delete this archived workout from your library? Your completed workout records will stay.'))savePlanChoice(plan,'deleted');},buttons);
     item.append(buttons);list.append(item);
