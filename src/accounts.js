@@ -71,14 +71,45 @@ const outboxKey = uid => 'pp_vercel_demo_workout_outbox_' + uid;
 const outbox = uid => JSON.parse(localStorage.getItem(outboxKey(uid)) || '{}');
 const persistOutbox = (uid, entries) => localStorage.setItem(outboxKey(uid), JSON.stringify(entries));
 
+function planLibrary() {
+  try { return JSON.parse(localStorage.getItem('pp_coach_library_'+activeAccount?.uid)||'{}'); } catch { return {}; }
+}
+function savePlanChoice(plan, state) {
+  if (!activeAccount) return;
+  const library=planLibrary(); library[plan.id]={state,plan};
+  localStorage.setItem('pp_coach_library_'+activeAccount.uid,JSON.stringify(library));
+  renderAssignments();
+}
+function renderArchivedPlans(library) {
+  let section=document.getElementById('archivedCoachWorkouts');
+  if(!section){section=document.createElement('div');section.id='archivedCoachWorkouts';section.className='card';document.getElementById('clientMessageCard').after(section);}
+  section.hidden=!activeAccount;section.replaceChildren();
+  const title=document.createElement('h3');title.textContent='Archived workouts';section.append(title);
+  const list=document.createElement('div');list.className='archived-workout-list';section.append(list);
+  const entries=Object.values(library).filter(entry=>entry.state==='archived');
+  if(!entries.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='Workouts you archive will appear here.';list.append(empty);}
+  for(const {plan} of entries){const item=card(plan.name,'Coach workout');const buttons=document.createElement('div');buttons.className='row';
+    action('Restore',()=>savePlanChoice(plan,'active'),buttons);
+    action('Delete',()=>{if(confirm('Delete this archived workout from your library? Your completed workout records will stay.'))savePlanChoice(plan,'deleted');},buttons);
+    item.append(buttons);list.append(item);
+  }
+}
 function renderAssignments() {
-  assigned.replaceChildren(...plans.map(plan => {
+  const library=planLibrary();
+  renderArchivedPlans(library);
+  const available=new Map(plans.map(plan=>[plan.id,plan]));
+  for(const entry of Object.values(library))if(entry.state==='active'&&!available.has(entry.plan.id))available.set(entry.plan.id,entry.plan);
+  assigned.replaceChildren(...[...available.values()].filter(plan=>!['archived','deleted'].includes(library[plan.id]?.state)).map(plan => {
     const days = (plan.days || []).map((day, index) => ({day, index})).filter(({day}) => day?.exercises?.length);
     const completed = new Set(window.completedCoachDays(plan.id));
     const done = days.length > 0 && days.every(({index}) => completed.has(index));
     const item = card(plan.name, done ? 'Completed · Coach assigned' :
       plan.archived ? 'Previous coach workout' : 'Coach assigned');
     item.classList.toggle('coach-completed', done);
+    item.classList.add('coach-workout-card');
+    const menu=document.createElement('details');menu.className='workout-menu';
+    const more=document.createElement('summary');more.textContent='•••';more.setAttribute('aria-label','Options for '+plan.name);menu.append(more);
+    action('Archive',()=>savePlanChoice(plan,'archived'),menu);item.prepend(menu);
     if (plan.coachNotes) {
       const notes = document.createElement('p');
       notes.textContent = plan.coachNotes;
@@ -341,6 +372,7 @@ async function renderAccount(user) {
   configureSessions(user,portal);
   resetMessages(user);
   plans = [];
+  renderAssignments();
   syncStatus.hidden = true;
   window.selectWorkoutAccount(user?.uid || null);
   controls.replaceChildren(); assigned.replaceChildren(); account.replaceChildren(); sessions.replaceChildren();
