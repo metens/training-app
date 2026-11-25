@@ -121,7 +121,7 @@ nav button{display:flex;align-items:center;justify-content:center;gap:5px;white-
 .live-exercise-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .live-exercise-heading button{font-size:13px;padding:8px;min-height:44px}
 .live-library{border-top:1px solid #cbdac5;margin-top:12px;padding-top:12px}
-</style><div class="app"><header class="app-header"><div class="header-copy"><h1 id="title">Train with purpose.</h1><p>Strength · Running · Performance</p></div><img class="header-logo" src="/pacific-logo.png" alt="Pacific Performance Training" width="104" height="104"></header><button id="messageNotice" class="message-notice" type="button" hidden aria-live="polite"></button><main><section id="home" class="on"><h2 id="clientGreeting" hidden></h2><div class="card"><h3>Training overview</h3><div class="row"><div><strong id="total">0</strong><p class="muted">Sessions</p></div><div><strong id="routineCount">0</strong><p class="muted">Custom workouts</p></div><div><strong id="weeklyStreak">0 weeks</strong><p class="muted">Weekly streak</p></div></div><h4>Personal records</h4><div id="overviewPRs"></div></div><h2>Workout activity</h2><div id="workoutFeed"></div></section><section id="workouts"><div class="row"><h2>Workouts</h2><span class="pill">Training hub</span></div><div class="card"><h3>Workout Builder</h3><p class="muted">Build a routine with sets, reps and weights.</p><button class="full" onclick="builder()">+ Create workout</button></div><div id="clientAssignments"></div><p id="workoutSyncStatus" class="muted" role="status" hidden></p><div id="routines"></div><div id="assigned"></div></section><section id="progress"><h2>Progress</h2><div class="card"><h3>Training consistency</h3><strong id="progressTotal" style="font-size:36px">0</strong><p class="muted">Completed workouts</p><div class="bar"><div id="progressBar" style="width:0%"></div></div><p class="muted">Goal: 3 workouts</p><div id="trainingMonth"></div></div><div class="card"><h3>PR log</h3><p class="muted">Log a lift here or finish a workout to update your personal records.</p>
+.rest-controls{background:#f3f7f0;border-radius:12px;padding:12px;margin:12px 0}.rest-controls>label{display:block;margin:8px 0;font-size:15px}.rest-controls input[type=checkbox]{width:20px;height:20px;vertical-align:middle}.rest-controls input[type=number]{font-size:16px;min-height:44px}</style><div class="app"><header class="app-header"><div class="header-copy"><h1 id="title">Train with purpose.</h1><p>Strength · Running · Performance</p></div><img class="header-logo" src="/pacific-logo.png" alt="Pacific Performance Training" width="104" height="104"></header><button id="messageNotice" class="message-notice" type="button" hidden aria-live="polite"></button><main><section id="home" class="on"><h2 id="clientGreeting" hidden></h2><div class="card"><h3>Training overview</h3><div class="row"><div><strong id="total">0</strong><p class="muted">Sessions</p></div><div><strong id="routineCount">0</strong><p class="muted">Custom workouts</p></div><div><strong id="weeklyStreak">0 weeks</strong><p class="muted">Weekly streak</p></div></div><h4>Personal records</h4><div id="overviewPRs"></div></div><h2>Workout activity</h2><div id="workoutFeed"></div></section><section id="workouts"><div class="row"><h2>Workouts</h2><span class="pill">Training hub</span></div><div class="card"><h3>Workout Builder</h3><p class="muted">Build a routine with sets, reps and weights.</p><button class="full" onclick="builder()">+ Create workout</button></div><div id="clientAssignments"></div><p id="workoutSyncStatus" class="muted" role="status" hidden></p><div id="routines"></div><div id="assigned"></div></section><section id="progress"><h2>Progress</h2><div class="card"><h3>Training consistency</h3><strong id="progressTotal" style="font-size:36px">0</strong><p class="muted">Completed workouts</p><div class="bar"><div id="progressBar" style="width:0%"></div></div><p class="muted">Goal: 3 workouts</p><div id="trainingMonth"></div></div><div class="card"><h3>PR log</h3><p class="muted">Log a lift here or finish a workout to update your personal records.</p>
 <form id="manualLift" onsubmit="saveLift(event)">
   <span id="liftLabel">Lift</span>
   <button type="button" class="light full lift-picker" id="liftPicker" aria-labelledby="liftLabel liftSelection" aria-haspopup="dialog" onclick="openLiftPicker()"><span id="liftSelection">Choose a lift</span><span aria-hidden="true">⌄</span></button>
@@ -227,7 +227,7 @@ function assignedDetails() {
   show('Assigned workout', entries.join(''));
 }
 
-function tab(n){if(n==='shop')return;document.querySelectorAll('section').forEach(x=>x.classList.toggle('on',x.id===n));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.id==='nav-'+n));document.getElementById('title').textContent=({home:'Train with purpose.',workouts:'Built to perform.',progress:'Progress is earned.',shop:'Train your way.',account:'Your training hub.'})[n];window.scrollTo(0,0);render()}let modalScrollY=0;function show(t,body){if(!document.body.classList.contains('modal-open')){modalScrollY=window.scrollY;document.body.style.top='-'+modalScrollY+'px';document.body.classList.add('modal-open');document.documentElement.classList.add('modal-open');}document.getElementById('dialogTitle').textContent=t;document.getElementById('dialogBody').classList.remove('workout-actions');document.getElementById('dialogBody').innerHTML=body;document.getElementById('dialog').classList.add('on')}function closeDialog(){clearInterval(workoutTimer);document.getElementById('dialog').classList.remove('on');if(document.body.classList.contains('modal-open')){document.body.classList.remove('modal-open');document.documentElement.classList.remove('modal-open');document.body.style.top='';window.scrollTo(0,modalScrollY);}}function render(){renderWorkoutFeed();renderTrainingOverview();document.getElementById('total').textContent=history.length;document.getElementById('routineCount').textContent=routines.length;document.getElementById('progressTotal').textContent=history.length;document.getElementById('progressBar').style.width=Math.min(100,history.length/3*100)+'%';document.getElementById('routines').innerHTML=routines.map((r,i)=>'<div class="card"><span class="pill">CUSTOM WORKOUT</span><h3>'+safe(r.name)+'</h3><p class="muted">'+r.exercises.length+' exercises</p><div class="row"><button onclick="start('+i+')">Start workout</button><button class="light" onclick="viewWorkout(routines['+i+'])">View</button></div><button class="light" style="margin-top:10px" onclick="remove('+i+')">Delete</button></div>').join('');renderAssigned();renderTrainingMonth();renderStrengthRecords()}function mondayOf(date) {
+function tab(n){if(n==='shop')return;document.querySelectorAll('section').forEach(x=>x.classList.toggle('on',x.id===n));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.id==='nav-'+n));document.getElementById('title').textContent=({home:'Train with purpose.',workouts:'Built to perform.',progress:'Progress is earned.',shop:'Train your way.',account:'Your training hub.'})[n];window.scrollTo(0,0);render()}let modalScrollY=0;function show(t,body){if(activeWorkout && document.getElementById("workoutElapsed")){saveActiveWorkout();activeWorkout=null;clearInterval(workoutTimer);}if(!document.body.classList.contains('modal-open')){modalScrollY=window.scrollY;document.body.style.top='-'+modalScrollY+'px';document.body.classList.add('modal-open');document.documentElement.classList.add('modal-open');}document.getElementById('dialogTitle').textContent=t;document.getElementById('dialogBody').classList.remove('workout-actions');document.getElementById('dialogBody').innerHTML=body;document.getElementById('dialog').classList.add('on')}function closeDialog(){saveActiveWorkout();activeWorkout=null;clearInterval(workoutTimer);document.getElementById('dialog').classList.remove('on');if(document.body.classList.contains('modal-open')){document.body.classList.remove('modal-open');document.documentElement.classList.remove('modal-open');document.body.style.top='';window.scrollTo(0,modalScrollY);}}function render(){renderResumeWorkout();renderWorkoutFeed();renderTrainingOverview();document.getElementById('total').textContent=history.length;document.getElementById('routineCount').textContent=routines.length;document.getElementById('progressTotal').textContent=history.length;document.getElementById('progressBar').style.width=Math.min(100,history.length/3*100)+'%';document.getElementById('routines').innerHTML=routines.map((r,i)=>'<div class="card"><span class="pill">CUSTOM WORKOUT</span><h3>'+safe(r.name)+'</h3><p class="muted">'+r.exercises.length+' exercises</p><div class="row"><button onclick="start('+i+')">Start workout</button><button class="light" onclick="viewWorkout(routines['+i+'])">View</button></div><button class="light" style="margin-top:10px" onclick="remove('+i+')">Delete</button></div>').join('');renderAssigned();renderTrainingMonth();renderStrengthRecords()}function mondayOf(date) {
   const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   day.setDate(day.getDate() - (day.getDay() + 6) % 7);
   return day;
@@ -703,6 +703,8 @@ function historyKey() {
 
 function selectWorkoutAccount(uid) {
   if (uid === historyAccount) return;
+  saveActiveWorkout();
+  activeWorkout=null;
   historyAccount = uid;
   routines = uid ? get(accountDataKey('routines'), []) : [];
   lifts = uid ? get(accountDataKey('lifts'), []) : [];
@@ -960,10 +962,91 @@ let workoutTimer;
 let workoutStartedAt;
 
 let activeWorkout;
+let workoutEpoch=0, restUntil=0;
 
 function start(i) {
   startWorkout(routines[i]);
 }
+
+function previousSets(name) {
+  for(const session of [...history].reverse()) {
+    const sets=(session.sets||[]).filter(set=>set.name===name);
+    if(sets.length)return sets;
+  }
+  return [];
+}
+function previousPerformanceHTML(name,index) {
+  const sets=previousSets(name);if(!sets.length)return '';
+  return '<p class="muted">Last time: '+safe(sets.map(exerciseMeasurement).join(' · '))+'</p><button class="light" onclick="reusePrevious('+index+')">Use last values</button>';
+}
+function reusePrevious(index) {
+  const exercise=document.querySelector('[data-exercise-index="'+index+'"]');
+  if(!exercise)return;
+  const previous=previousSets(activeWorkout.exercises[index].name);
+  exercise.querySelectorAll('.set-row').forEach((row,i)=>{
+    if(row.querySelector('.setCheck').checked)return;
+    const value=previous[Math.min(i,previous.length-1)];if(!value)return;
+    if(row.querySelector('.session-cardio')){
+      if(value.unit===cardioTarget(activeWorkout.exercises[index])?.unit)row.querySelector('.session-cardio').value=value.amount;
+    }else if(value.reps!=null && value.weight!=null){
+      row.querySelector('.session-reps').value=value.reps;row.querySelector('.session-weight').value=value.weight;
+    }
+  });saveActiveWorkout();
+}
+function renderResumeWorkout() {
+  let card=document.getElementById('resumeWorkout');
+  if(!card){card=document.createElement('div');card.id='resumeWorkout';card.className='card';document.getElementById('home').prepend(card);}
+  const saved=historyAccount ? get(accountDataKey('activeWorkout'),null) : null;
+  card.hidden=!saved;card.innerHTML=saved?'<h3>Unfinished workout</h3><p>'+safe(saved.routine.name)+'</p><div class="row"><button onclick="resumeWorkout()">Resume workout</button><button class="light" onclick="discardWorkout()">Discard</button></div>':'';
+}
+function saveActiveWorkout() {
+  if(!historyAccount||!activeWorkout||!document.getElementById('workoutElapsed'))return;
+  const rows=[...document.querySelectorAll('.session-exercise')].map(exercise=>({
+    exercise:activeWorkout.exercises[Number(exercise.dataset.exerciseIndex)],added:exercise.dataset.added,
+    sets:[...exercise.querySelectorAll('.set-row')].map(row=>{
+      const values={checked:row.querySelector('.setCheck').checked,added:row.dataset.added};
+      for(const field of ['session-reps','session-weight','session-cardio'])if(row.querySelector('.'+field))values[field]=row.querySelector('.'+field).value;
+      return values;
+    })
+  }));
+  const routine={...activeWorkout,exercises:rows.map(row=>({...row.exercise,sets:row.sets.length}))};
+  try{localStorage.setItem(key+accountDataKey('activeWorkout'),JSON.stringify({routine,rows,startedAt:workoutEpoch,restUntil}));
+    const status=document.getElementById('workoutSaveStatus');if(status)status.textContent='Saved on this phone';
+  }catch{const status=document.getElementById('workoutSaveStatus');if(status)status.textContent='Unable to save on this phone. Keep this workout open.';}
+  renderResumeWorkout();
+}
+function resumeWorkout(){const saved=get(accountDataKey('activeWorkout'),null);if(saved)startWorkout(saved.routine,saved);}
+function discardWorkout(){if(!confirm('Discard this unfinished workout?'))return;activeWorkout=null;restUntil=0;localStorage.removeItem(key+accountDataKey('activeWorkout'));renderResumeWorkout();}
+function restControls(){
+  const settings=get(accountDataKey('restSettings'),{seconds:90,auto:true,sound:false});
+  return '<div class="rest-controls"><div class="row"><strong id="restCountdown" role="status">Rest timer</strong><button class="light" onclick="restUntil=0;tickRestTimer();saveActiveWorkout()">Skip rest</button></div><label>Rest seconds <input id="restSeconds" type="number" min="5" max="900" value="'+safe(settings.seconds)+'" onchange="saveRestSettings()"></label><label><input id="autoRest" type="checkbox" '+(settings.auto?'checked':'')+' onchange="saveRestSettings()"> Start after each set</label><label><input id="restSound" type="checkbox" '+(settings.sound?'checked':'')+' onchange="saveRestSettings();unlockRestSound()"> Sound</label><button class="light" onclick="startRestTimer()">Start rest</button><p id="workoutSaveStatus" class="muted" role="status"></p></div>';
+}
+let restAudio;
+function unlockRestSound(){if(document.getElementById('restSound')?.checked){try{restAudio ||= new (window.AudioContext||window.webkitAudioContext)();restAudio.resume().catch(()=>{});}catch{}}}
+function saveRestSettings(){
+  const field=document.getElementById('restSeconds');
+  if(!field.validity.valid||!field.value)return;
+  put(accountDataKey('restSettings'),{seconds:field.valueAsNumber,auto:document.getElementById('autoRest').checked,sound:document.getElementById('restSound').checked});
+}
+function startRestTimer(){
+  const field=document.getElementById('restSeconds');if(!field.reportValidity()||!field.value)return;
+  unlockRestSound();restUntil=Date.now()+field.valueAsNumber*1000;tickRestTimer();saveActiveWorkout();
+}
+function tickRestTimer(){
+  const label=document.getElementById('restCountdown');if(!label)return;
+  if(!restUntil){label.textContent='Rest timer';return;}
+  const seconds=Math.ceil((restUntil-Date.now())/1000);
+  label.textContent=seconds>0?'Rest '+formatElapsed(seconds):'Rest complete';
+  if(seconds<=0){restUntil=0;navigator.vibrate?.([150,75,150]);
+    if(document.getElementById('restSound')?.checked&&restAudio?.state==='running'){
+      const oscillator=restAudio.createOscillator(),gain=restAudio.createGain();oscillator.connect(gain);gain.connect(restAudio.destination);gain.gain.value=.15;oscillator.frequency.value=660;oscillator.start();oscillator.stop(restAudio.currentTime+.25);
+    }
+    saveActiveWorkout();
+  }
+}
+document.getElementById('dialogBody').addEventListener('input',()=>saveActiveWorkout());
+window.addEventListener('pagehide',saveActiveWorkout);
+document.addEventListener('visibilitychange',()=>{saveActiveWorkout();if(!document.hidden)tickRestTimer();});
 
 function liveExerciseHTML(exercise, index) {
     const {name, sets, reps, weight} = exercise;
@@ -981,25 +1064,41 @@ function liveExerciseHTML(exercise, index) {
         (set + 1) + ' weight (lb)') + '" value="' + (weight == null ? '' : safe(weight)) + '">' + removeSetButton + '</div>';
     }).join('');
     return '<div class="exercise session-exercise" data-exercise-index="' + index + '"><div class="live-exercise-heading"><b>' + safe(name) + '</b><button class="light" onclick="removeLiveExercise(this)">Remove exercise</button></div>' + formPicture(name, name, true) +
-      '<p class="muted">' + (target && !validCardio(target.unit, target.amount)
+      previousPerformanceHTML(name,index) + '<p class="muted">' + (target && !validCardio(target.unit, target.amount)
         ? 'Enter a measurement for each set.' : (target ? safe(exerciseMeasurement(exercise)) :
           (reps == null ? 'Enter reps' : safe(reps) + ' reps')) + ' per set') + '</p>' +
       (exercise.prescription ? '<p class="muted">' + safe(exercise.prescription) + '</p>' : '') + (target ? '' : '<div class="set-head live-set-head"><span>Set</span><span>Reps</span><span>Weight (lb)</span><span></span></div>') + '<div class="live-sets">' + setRows + '</div><button class="light" onclick="addLiveSet(this)">+ Add set</button></div>';
 }
 
-function startWorkout(routine) {
-  activeWorkout = structuredClone(routine);
-  activeWorkout.removedAssignedWork = false;
+function startWorkout(routine, recovery=null) {
+  if(!recovery && get(accountDataKey('activeWorkout'),null) && !confirm('Replace your unfinished workout with this workout?')) return;
+  activeWorkout = null;
+  clearInterval(workoutTimer);
+  restUntil=recovery?.restUntil || 0;
+  workoutEpoch=recovery?.startedAt || Date.now();
+
+
   const exercises = routine.exercises.map(liveExerciseHTML).join('');
   show(routine.name, '<div class="workout-status"><div class="row"><span>Elapsed <strong id="workoutElapsed">0:00</strong></span>' +
     '<span id="workoutSetCount" class="muted"></span></div>' +
     '<progress id="workoutProgress" aria-label="Workout sets completed" value="0"></progress></div>' +
-    '<div id="liveExercises">' + exercises + '</div><button class="light full" style="margin-top:12px" onclick="pickLiveExercise()">+ Add exercise</button><div id="liveLibrary" class="live-library" hidden></div><button class="full" style="margin-top:14px" onclick="finishCustom()">Finish workout</button>');
-  workoutStartedAt = performance.now();
+    restControls() + '<div id="liveExercises">' + exercises + '</div><button class="light full" style="margin-top:12px" onclick="pickLiveExercise()">+ Add exercise</button><div id="liveLibrary" class="live-library" hidden></div><button class="full" style="margin-top:14px" onclick="finishCustom()">Finish workout</button>');
+  activeWorkout=structuredClone(routine);
+  activeWorkout.removedAssignedWork=recovery?.routine?.removedAssignedWork || false;
+  if(recovery) document.querySelectorAll('.session-exercise').forEach((exercise,i)=>{
+    exercise.dataset.added=recovery.rows[i].added || '';
+    exercise.querySelectorAll('.set-row').forEach((row,j)=>{
+      const saved=recovery.rows[i].sets[j];row.dataset.added=saved.added || '';
+      row.querySelector('.setCheck').checked=saved.checked;
+      for(const field of ['session-reps','session-weight','session-cardio'])if(row.querySelector('.'+field))row.querySelector('.'+field).value=saved[field] ?? '';
+    });
+  });
+  workoutStartedAt = performance.now() - (Date.now()-workoutEpoch);
   const timer = document.getElementById('workoutElapsed');
   clearInterval(workoutTimer);
   workoutTimer = setInterval(() => {
-    timer.textContent = formatElapsed(Math.floor((performance.now() - workoutStartedAt) / 1000));
+    timer.textContent = formatElapsed(Math.floor((Date.now() - workoutEpoch) / 1000));
+    tickRestTimer();
   }, 250);
   updateWorkoutProgress();
 }
@@ -1021,7 +1120,7 @@ function addLiveSet(button) {
   const last = list.lastElementChild;
   const row = last ? last.cloneNode(true) : (() => {
     const holder = document.createElement('div');
-    holder.innerHTML = liveExerciseHTML(activeWorkout.exercises[Number(exercise.dataset.exerciseIndex)],Number(exercise.dataset.exerciseIndex));
+    holder.innerHTML = liveExerciseHTML({...activeWorkout.exercises[Number(exercise.dataset.exerciseIndex)],sets:1},Number(exercise.dataset.exerciseIndex));
     return holder.querySelector('.set-row');
   })();
   row.querySelector('.setCheck').checked = false;
@@ -1062,13 +1161,14 @@ function addLiveExercise(index) {
 }
 
 function updateWorkoutProgress(changed) {
-  if (changed?.checked) navigator.vibrate?.(15);
+  if (changed?.checked) { navigator.vibrate?.(15); if(document.getElementById('autoRest')?.checked) startRestTimer(); }
   const sets = [...document.querySelectorAll('#dialogBody .setCheck')];
   const completed = sets.filter(set => set.checked).length;
   const progress = document.getElementById('workoutProgress');
   progress.max = sets.length || 1;
   progress.value = completed;
   document.getElementById('workoutSetCount').textContent = completed + ' / ' + sets.length + ' sets';
+  saveActiveWorkout();
 }
 
 function finishCustom() {
@@ -1120,7 +1220,8 @@ function finishCustom() {
     return {name, number, weight, reps, pr: weightPR || repPR};
   });
 
-  activeWorkout = null;
+  localStorage.removeItem(key+accountDataKey('activeWorkout'));
+  activeWorkout = null;restUntil=0;
   const assignment = routine.planId ? {planId: routine.planId, planDay: routine.planDay, allSets} : {};
   complete(routine.name, Array.from(records, ([name, weight]) => ({name, weight})), sets, duration, assignment);
   closeDialog();

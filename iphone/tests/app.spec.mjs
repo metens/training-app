@@ -55,3 +55,21 @@ test('live workout edits preserve entered sets and saved template',async({page})
  page.on('dialog',d=>d.accept());await page.getByRole('button',{name:'Finish workout',exact:true}).click();
  const saved=await page.evaluate(()=>({session:history.at(-1),template:routines[0]}));expect(saved.session.sets.map(s=>s.name)).toEqual(['Barbell Squat','Bench Press']);expect(saved.session.sets[0].weight).toBe(125);expect(saved.template.exercises).toHaveLength(1);expect(saved.template.exercises[0].sets).toBe(3);
 });
+test('unfinished workouts recover edits after reload and stay account scoped',async({page})=>{
+ await open(page);await login(page);await create(page);await page.getByRole('button',{name:'Save workout',exact:true}).click();await page.locator('#routines').getByRole('button',{name:'Start workout'}).click();
+ await page.locator('.session-weight').first().fill('135');await page.locator('.setCheck').first().check();await page.getByRole('button',{name:'Remove set',exact:true}).last().click();
+ const epoch=await page.evaluate(()=>workoutEpoch);
+ await page.reload();await login(page);await page.getByRole('button',{name:'Resume workout',exact:true}).click();
+ await expect(page.locator('.setCheck')).toHaveCount(2);await expect(page.locator('.setCheck').first()).toBeChecked();await expect(page.locator('.session-weight').first()).toHaveValue('135');expect(await page.evaluate(()=>workoutEpoch)).toBe(epoch);
+ await page.evaluate(()=>{closeDialog();selectWorkoutAccount('client-b');});await expect(page.locator('#resumeWorkout')).toBeHidden();
+ await page.evaluate(()=>selectWorkoutAccount('client-a'));await expect(page.locator('#resumeWorkout')).toBeVisible();
+});
+test('previous values and adjustable rest timer work during a workout',async({page})=>{
+ await open(page);await login(page);
+ await page.evaluate(()=>{history.push({name:'Previous',sets:[{name:'Barbell Squat',reps:8,weight:95}]});startWorkout({name:'Test',exercises:[{name:'Barbell Squat',sets:2,reps:10,weight:0}]});});
+ await expect(page.locator('#dialogBody')).toContainText('Last time: 8 reps · 95 lb');await page.getByRole('button',{name:'Use last values'}).click();await expect(page.locator('.session-weight').first()).toHaveValue('95');await expect(page.locator('.session-reps').first()).toHaveValue('8');
+ await page.locator('#restSeconds').fill('30');await page.locator('.setCheck').first().check();await expect(page.locator('#restCountdown')).toContainText('Rest 0:');
+ await page.evaluate(()=>{restUntil=Date.now()-1;tickRestTimer();});expect(await page.evaluate(()=>restUntil)).toBe(0);
+ await page.getByRole('button',{name:'Start rest',exact:true}).click();await page.getByRole('button',{name:'Skip rest',exact:true}).click();expect(await page.evaluate(()=>restUntil)).toBe(0);
+ await page.locator('.setCheck').last().check();await page.getByRole('button',{name:'Finish workout',exact:true}).click();expect(await page.evaluate(()=>get(accountDataKey('activeWorkout'),null))).toBeNull();
+});
